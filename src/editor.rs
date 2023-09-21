@@ -2,7 +2,6 @@ use crate::Document;
 use crate::Row;
 use crate::Terminal;
 use std::env;
-use std::time::Duration;
 use std::time::Instant;
 use termion::event::Key;
 use termion::color;
@@ -97,83 +96,30 @@ impl Editor {
         Terminal::flush()
     }
 
-    fn draw_cursor(&self) {
-        // This is basically here so we can store the cursor's absolute
-        // position, and display it according to the current line
-        let Position {x, y} = self.cursor_position;
-        let width = if let Some(row) = self.document.row(y) {
-            row.len()
-        } else {
-            0
-        };
-        if x > width {
-            Terminal::cursor_position(&Position {
-                x: width.saturating_sub(self.offset.x),
-                y: y.saturating_sub(self.offset.y),
-            });
-            return
-        }
-        Terminal::cursor_position(&Position {
-            x: x.saturating_sub(self.offset.x),
-            y: y.saturating_sub(self.offset.y),
-        });
-    }
-
-    fn draw_status_bar(&self) {
-        let width = self.terminal.size().width as usize;
-        // Da pra definir file_name como imutavel?
-        let mut status = "[No_name]".to_string();
-        if let Some(name) = &self.document.file_name {
-            status = name.clone();
-            status.truncate(20);
-        }
-
-        let line_indicator = format!{
-            "{},{}   {}%",
-            self.cursor_position.y,
-            self.cursor_position.x,
-            {
-                if self.cursor_position.y == 0 {
-                    0
-                }
-                else {
-                   (self.cursor_position.y*100)/self.document.len()
-                }
-            },
-        };
-
-
-        let len = status.len() + line_indicator.len();
-        if width > status.len() {
-            status.push_str(&" ".repeat(width - len));
-        }
-
-        status = format!("{}{}", status, line_indicator);
-        status.truncate(width);
-
-        Terminal::set_bg_color(STATUS_BG_COLOR);
-        Terminal::set_fg_color(STATUS_FG_COLOR);
-        println!("{}\r", status);
-        Terminal::reset_bg_color();
-        Terminal::reset_fg_color();
-    }
-
-    fn draw_message_bar(&self) {
-        // Maybe we could only call this function if 5 seconds had passed
-        // or the message was updated?
-        Terminal::clear_current_line();
-        let message = &self.status_message;
-        if message.time.elapsed().as_secs() < 5 {
-            let mut text = message.text.clone();
-            text.truncate(self.terminal.size().width as usize);
-            print!("{}", text);
-        }
-    }
 
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
         let pressed_key = Terminal::read_key()?;
         match pressed_key {
             Key::Ctrl('q') => self.should_quit = true,
+            Key::Ctrl('s') => self.save(),
+            Key::Delete => self.document.delete(&self.cursor_position),
+            Key::Backspace => {
+                self.move_cursor(Key::Left);
+                if self.cursor_position.y != 0 || self.cursor_position.x != 0 {
+                    self.document.delete(&self.cursor_position);
+                }
+            },
+            Key::Char('\n') => {
+                self.document.insert_newline(&self.cursor_position);
+                // Hacky way to do this since move_cursor(Key::Down)
+                // records the cursor's current position
+                self.cursor_position.y += 1;
+                self.cursor_position.x = 0;
+            }
+            Key::Char(c) => {
+                self.document.insert(&self.cursor_position, c);
+                self.move_cursor(Key::Right);
+            },
             #[rustfmt::skip]
             Key::Up 
             | Key::Down 
@@ -187,6 +133,27 @@ impl Editor {
         }
         self.scroll();
         Ok(())
+    }
+
+    fn save(&mut self) {
+        if self.document.file_name.is_none() {
+            let new_name = self.prompt("Save as: ").unwrap_or(None);
+            if new_name.is_none() {
+                self.status_message = StatusMessage::from("Save aborted".to_string());
+                return;
+            }
+            self.document.file_name = new_name;
+        }
+
+        if self.document.save(None).is_ok() {
+            self.status_message = StatusMessage::from
+                (format!("{} written", self.document.file_name.clone().unwrap()))
+        }
+        else {
+            self.status_message = StatusMessage::from
+                ("Error writing file".to_string())
+        }
+
     }
 
     fn scroll(&mut self) {
@@ -264,6 +231,109 @@ impl Editor {
         self.cursor_position = Position { x, y }
     }
 
+    fn prompt(&mut self, prompt: &str) -> Result<Option<String>, std::io::Error> {
+        let mut result = String::new();
+        loop {
+            self.status_message = StatusMessage::from(format!("{}{}", prompt, result));
+            self.refresh_screen()?;
+            match Terminal::read_key()? {
+                Key::Backspace => {
+                    if !result.is_empty() {
+                        result.truncate(result.len() - 1);
+                    }
+                }
+                Key::Char('\n') => break,
+                Key::Ctrl('q') =>  {
+                    result.truncate(0);
+                    break;
+                },
+                Key::Char(c) =>  {
+                    if !c.is_control() {
+                        result.push(c);
+                    }
+                }
+                _ => (),
+            }
+        }
+        self.status_message = StatusMessage::from(String::new());
+        if result.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(result))
+    }
+
+    fn draw_cursor(&self) {
+        // This is basically here so we can store the cursor's absolute
+        // position, and display it according to the current line
+        let Position {x, y} = self.cursor_position;
+        let width = if let Some(row) = self.document.row(y) {
+            row.len()
+        } else {
+            0
+        };
+        if x > width {
+            Terminal::cursor_position(&Position {
+                x: width.saturating_sub(self.offset.x),
+                y: y.saturating_sub(self.offset.y),
+            });
+            return
+        }
+        Terminal::cursor_position(&Position {
+            x: x.saturating_sub(self.offset.x),
+            y: y.saturating_sub(self.offset.y),
+        });
+    }
+
+    fn draw_status_bar(&self) {
+        let width = self.terminal.size().width as usize;
+        // Da pra definir file_name como imutavel?
+        let mut status = "[No_name]".to_string();
+        if let Some(name) = &self.document.file_name {
+            status = name.clone();
+            status.truncate(20);
+        }
+
+        let line_indicator = format!{
+            "{},{}   {}%",
+            self.cursor_position.y,
+            self.cursor_position.x,
+            {
+                if self.cursor_position.y == 0 {
+                    0
+                }
+                else {
+                   (self.cursor_position.y*100)/self.document.len()
+                }
+            },
+        };
+
+
+        let len = status.len() + line_indicator.len();
+        if width > status.len() {
+            status.push_str(&" ".repeat(width - len));
+        }
+
+        status = format!("{}{}", status, line_indicator);
+        status.truncate(width);
+
+        Terminal::set_bg_color(STATUS_BG_COLOR);
+        Terminal::set_fg_color(STATUS_FG_COLOR);
+        println!("{}\r", status);
+        Terminal::reset_bg_color();
+        Terminal::reset_fg_color();
+    }
+
+    fn draw_message_bar(&self) {
+        // Maybe we could only call this function if 5 seconds had passed
+        // or the message was updated?
+        Terminal::clear_current_line();
+        let message = &self.status_message;
+        if message.time.elapsed().as_secs() < 5 {
+            let mut text = message.text.clone();
+            text.truncate(self.terminal.size().width as usize);
+            print!("{}", text);
+        }
+    }
     fn draw_welcome_message(&self) {
         let mut welcome_message = format!("mtx editor -- version {}", VERSION);
         let width = self.terminal.size().width as usize;

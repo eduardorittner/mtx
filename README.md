@@ -22,6 +22,7 @@ to a piece table representation for very large files.
 than it (should be fixed with draw-cursor func)
 - Cursor is able to go until line.len(), not line.len() - 1. This is necessary
 for now as there is no "append" insert capability
+- Cursor is not shown on status message prompt
 
 ### Text editing
 
