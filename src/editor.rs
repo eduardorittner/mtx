@@ -3,12 +3,21 @@ use crate::Row;
 use crate::Terminal;
 use std::env;
 use std::time::Instant;
-use termion::event::Key;
 use termion::color;
+use termion::event::Key;
 
 const STATUS_BG_COLOR: color::Rgb = color::Rgb(75, 75, 75);
 const STATUS_FG_COLOR: color::Rgb = color::Rgb(200, 200, 200);
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[repr(u8)]
+#[derive(Debug)]
+pub enum Mode {
+    Normal = 0,
+    Insert,
+    Visual,
+    Command, // For command line prompts
+}
 
 #[derive(Default)]
 pub struct Position {
@@ -37,6 +46,7 @@ pub struct Editor {
     offset: Position,
     document: Document,
     status_message: StatusMessage,
+    mode: Mode,
 }
 
 impl Editor {
@@ -56,20 +66,18 @@ impl Editor {
     pub fn default() -> Self {
         let args: Vec<String> = env::args().collect();
         let mut initial_status = String::from("HELP: Ctrl-Q = quit");
-        let document = if args.len() > 1 {
-            let file_name = &args[1];
+        let document = if let Some(file_name) = args.get(1) {
             let doc = match Document::open(file_name) {
                 Ok(doc) => doc,
                 Err(_) => {
                     initial_status = format!("Err: could not open file {}", file_name);
                     Document::default()
-                },
+                }
             };
             doc
         } else {
             Document::default()
         };
-
 
         Self {
             should_quit: false,
@@ -78,6 +86,7 @@ impl Editor {
             cursor_position: Position::default(),
             offset: Position::default(),
             status_message: StatusMessage::from(initial_status),
+            mode: Mode::Insert,
         }
     }
 
@@ -96,19 +105,19 @@ impl Editor {
         Terminal::flush()
     }
 
-
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
         let pressed_key = Terminal::read_key()?;
         match pressed_key {
             Key::Ctrl('q') => self.should_quit = true,
-            Key::Ctrl('s') => self.save(),
+            Key::Ctrl('s') => self.save(false),
+            Key::Ctrl('w') => self.save(true),
             Key::Delete => self.document.delete(&self.cursor_position),
             Key::Backspace => {
                 self.move_cursor(Key::Left);
                 if self.cursor_position.y != 0 || self.cursor_position.x != 0 {
                     self.document.delete(&self.cursor_position);
                 }
-            },
+            }
             Key::Char('\n') => {
                 self.document.insert_newline(&self.cursor_position);
                 // Hacky way to do this since move_cursor(Key::Down)
@@ -119,13 +128,13 @@ impl Editor {
             Key::Char(c) => {
                 self.document.insert(&self.cursor_position, c);
                 self.move_cursor(Key::Right);
-            },
+            }
             #[rustfmt::skip]
-            Key::Up 
-            | Key::Down 
-            | Key::Left 
-            | Key::Right 
-            | Key::Ctrl('d') 
+            Key::Up
+            | Key::Down
+            | Key::Left
+            | Key::Right
+            | Key::Ctrl('d')
             | Key::Ctrl('u') => {
                 self.move_cursor(pressed_key)
             },
@@ -135,7 +144,13 @@ impl Editor {
         Ok(())
     }
 
-    fn save(&mut self) {
+    fn save(&mut self, save_as: bool) {
+        // Currently the file_name is directly attached
+        // to the file that it is saved to, maybe provide an option
+        // to save the file as something else but keep the same
+        // file_name
+        let mut arg = None;
+
         if self.document.file_name.is_none() {
             let new_name = self.prompt("Save as: ").unwrap_or(None);
             if new_name.is_none() {
@@ -143,17 +158,23 @@ impl Editor {
                 return;
             }
             self.document.file_name = new_name;
+        } else if save_as {
+            let name = self.prompt("Save as: ").unwrap_or(None);
+            if name.is_none() {
+                self.status_message = StatusMessage::from("Save aborted".to_string());
+                return;
+            }
+            arg = name;
         }
 
-        if self.document.save(None).is_ok() {
-            self.status_message = StatusMessage::from
-                (format!("{} written", self.document.file_name.clone().unwrap()))
+        if self.document.save(arg).is_ok() {
+            self.status_message = StatusMessage::from(format!(
+                "{} written",
+                self.document.file_name.clone().unwrap()
+            ))
+        } else {
+            self.status_message = StatusMessage::from("Error writing file".to_string())
         }
-        else {
-            self.status_message = StatusMessage::from
-                ("Error writing file".to_string())
-        }
-
     }
 
     fn scroll(&mut self) {
@@ -185,12 +206,15 @@ impl Editor {
         match key {
             Key::Up => y = y.saturating_sub(1),
             Key::Down => {
-                if y < height {
+                if y < height.saturating_sub(1) {
                     y = y.saturating_add(1);
                 }
             }
             Key::Left => {
-                if x > 0 {
+                // ew wtf why would you do this
+                if x > width && width > 0 {
+                    x = width - 1;
+                } else if x > 0 && width > 0 {
                     x -= 1;
                 } else if y > 0 {
                     y -= 1;
@@ -204,21 +228,21 @@ impl Editor {
             Key::Right => {
                 if x < width {
                     x += 1;
-                } else if y < height {
+                } else if y < height.saturating_sub(1) {
                     y += 1;
                     x = 0;
                 }
             }
             Key::Ctrl('u') => {
                 y = if y > terminal_height {
-                    y - terminal_height
+                    y.saturating_sub(terminal_height)
                 } else {
                     0
                 }
             }
             Key::Ctrl('d') => {
                 y = if y.saturating_add(terminal_height) < height {
-                    y + terminal_height as usize
+                    y.saturating_add(terminal_height)
                 } else {
                     height
                 }
@@ -232,22 +256,24 @@ impl Editor {
     }
 
     fn prompt(&mut self, prompt: &str) -> Result<Option<String>, std::io::Error> {
+        // Is there a way to not have to add a
+        // self.mode = insert before every return?
+        // maybe a wrapper for command line prompts?
+
+        self.mode = Mode::Command;
         let mut result = String::new();
         loop {
             self.status_message = StatusMessage::from(format!("{}{}", prompt, result));
             self.refresh_screen()?;
             match Terminal::read_key()? {
-                Key::Backspace => {
-                    if !result.is_empty() {
-                        result.truncate(result.len() - 1);
-                    }
-                }
+                Key::Backspace => result.truncate(result.len().saturating_sub(1)),
                 Key::Char('\n') => break,
-                Key::Ctrl('q') =>  {
+                Key::Ctrl('q') => {
                     result.truncate(0);
+                    self.mode = Mode::Insert;
                     break;
-                },
-                Key::Char(c) =>  {
+                }
+                Key::Char(c) => {
                     if !c.is_control() {
                         result.push(c);
                     }
@@ -257,43 +283,65 @@ impl Editor {
         }
         self.status_message = StatusMessage::from(String::new());
         if result.is_empty() {
+            self.mode = Mode::Insert;
             return Ok(None);
         }
+        self.mode = Mode::Insert;
         Ok(Some(result))
     }
 
     fn draw_cursor(&self) {
         // This is basically here so we can store the cursor's absolute
         // position, and display it according to the current line
-        let Position {x, y} = self.cursor_position;
-        let width = if let Some(row) = self.document.row(y) {
-            row.len()
-        } else {
-            0
-        };
-        if x > width {
-            Terminal::cursor_position(&Position {
-                x: width.saturating_sub(self.offset.x),
-                y: y.saturating_sub(self.offset.y),
-            });
-            return
+
+        match self.mode {
+            Mode::Insert => {
+                let Position { x, y } = self.cursor_position;
+                let width = if let Some(row) = self.document.row(y) {
+                    row.len()
+                } else {
+                    0
+                };
+                if x > width {
+                    Terminal::cursor_position(&Position {
+                        x: width.saturating_sub(self.offset.x),
+                        y: y.saturating_sub(self.offset.y),
+                    });
+                } else {
+                    Terminal::cursor_position(&Position {
+                        x: x.saturating_sub(self.offset.x),
+                        y: y.saturating_sub(self.offset.y),
+                    });
+                }
+            }
+            Mode::Command => Terminal::cursor_position(&Position {
+                // Since we can't move right or left on command prompt
+                // assume cursor is at the end of string
+                x: self.status_message.text.len(),
+                y: (self.terminal.size().height + 1) as usize,
+            }),
+            _ => (),
         }
-        Terminal::cursor_position(&Position {
-            x: x.saturating_sub(self.offset.x),
-            y: y.saturating_sub(self.offset.y),
-        });
     }
 
+    #[allow(clippy::integer_arithmetic, clippy::integer_division)]
     fn draw_status_bar(&self) {
         let width = self.terminal.size().width as usize;
-        // Da pra definir file_name como imutavel?
         let mut status = "[No_name]".to_string();
+        let modified = if self.document.is_dirty() {
+            " {Modified}"
+        } else {
+            ""
+        };
+
         if let Some(name) = &self.document.file_name {
             status = name.clone();
             status.truncate(20);
         }
 
-        let line_indicator = format!{
+        status = format!("{}{}", status, modified);
+
+        let line_indicator = format! {
             "{},{}   {}%",
             self.cursor_position.y,
             self.cursor_position.x,
@@ -302,17 +350,15 @@ impl Editor {
                     0
                 }
                 else {
-                   (self.cursor_position.y*100)/self.document.len()
+                    (self.cursor_position.y*100) / self.document.len()
                 }
             },
         };
 
-
+        #[allow(clippy::integer_arithmetic)]
         let len = status.len() + line_indicator.len();
-        if width > status.len() {
-            status.push_str(&" ".repeat(width - len));
-        }
 
+        status.push_str(&" ".repeat(width.saturating_sub(len)));
         status = format!("{}{}", status, line_indicator);
         status.truncate(width);
 
@@ -338,6 +384,7 @@ impl Editor {
         let mut welcome_message = format!("mtx editor -- version {}", VERSION);
         let width = self.terminal.size().width as usize;
         let len = welcome_message.len();
+        #[allow(clippy::integer_division, clippy::integer_arithmetic)]
         let padding = width.saturating_sub(len) / 2;
         let spaces = " ".repeat(padding.saturating_sub(1));
         welcome_message = format!("~{}{}", spaces, welcome_message);
@@ -348,16 +395,21 @@ impl Editor {
     pub fn draw_row(&self, row: &Row) {
         let width = self.terminal.size().width as usize;
         let start = self.offset.x;
-        let end = self.offset.x + width;
+        let end = self.offset.x.saturating_add(width);
         let row = row.render(start, end);
         println!("{}\r", row)
     }
 
     fn draw_rows(&self) {
+        // Separate this function into draw_starting_screen
+        // and draw_rows
         let height = self.terminal.size().height;
         for terminal_row in 0..height {
             Terminal::clear_current_line();
-            if let Some(row) = self.document.row(terminal_row as usize + self.offset.y) {
+            if let Some(row) = self
+                .document
+                .row(self.offset.y.saturating_add(terminal_row as usize))
+            {
                 self.draw_row(row);
             } else if self.document.is_empty() && terminal_row == height / 3 {
                 self.draw_welcome_message();

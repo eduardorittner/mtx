@@ -16,18 +16,24 @@ to a piece table representation for very large files.
 
 ## TODOS
 
+### Project structure
+- Add automated testing for basic functions such as insert, remove, etc. with
+input and expected output
+
 ### Cursor
 
 - Cursor doesn't "remember" its position after going to a line that's smaller
-than it (should be fixed with draw-cursor func)
+than it (should be fixed with draw-cursor func) -- DONE
 - Cursor is able to go until line.len(), not line.len() - 1. This is necessary
 for now as there is no "append" insert capability
-- Cursor is not shown on status message prompt
+- Cursor is not shown on status message prompt -- DONE
 
 ### Text editing
 
 - Add editing text capabilities (insert, remove, select)
 - Add modes (normal, insert, maybe visual)
+- Undo/Redo operation
+- Search 
 
 ### Visual
 

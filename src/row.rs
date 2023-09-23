@@ -9,12 +9,10 @@ pub struct Row {
 
 impl From<&str> for Row {
     fn from(slice: &str) -> Self {
-        let mut row = Self {
+        Self {
             string: String::from(slice),
-            len: 0,
-        };
-        row.update_len();
-        row
+            len: slice.graphemes(true).count(),
+        }
     }
 }
 
@@ -23,6 +21,7 @@ impl Row {
         let end = cmp::min(end, self.string.len());
         let start = cmp::min(start, end);
         let mut result = String::new();
+        #[allow(clippy::integer_arithmetic)]
         for grapheme in self.string[..]
             .graphemes(true)
             .skip(start)
@@ -40,14 +39,21 @@ impl Row {
     pub fn insert(&mut self, at: usize, c: char) {
         if at >= self.len() {
             self.string.push(c);
+            self.len += 1;
         } else {
-            let mut result: String = self.string[..].graphemes(true).take(at).collect();
-            let remainder: String = self.string[..].graphemes(true).skip(at).collect();
-            result.push(c);
-            result.push_str(&remainder);
+            let mut result = String::new();
+            let mut length = 0;
+            for (index, grapheme) in self.string[..].graphemes(true).enumerate() {
+                if index == at {
+                    length += 1;
+                    result.push(c);
+                }
+                length += 1;
+                result.push_str(grapheme);
+            }
+            self.len = length;
             self.string = result;
         }
-        self.update_len();
     }
 
     pub fn delete(&mut self, at: usize) {
@@ -62,6 +68,7 @@ impl Row {
     }
 
     pub fn append(&mut self, row: &Row) {
+        // Maybe we should take a string only, not a row
         self.string = format!("{}{}", self.string, row.string);
         self.update_len();
     }
