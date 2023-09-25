@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::fs;
 use std::io::{Error, Write};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Document {
     rows: Vec<Row>,
     pub file_name: Option<String>,
@@ -121,12 +121,47 @@ impl Document {
     }
 }
 
+impl PartialEq for Document {
+    fn eq(&self, other: &Self) -> bool {
+        for (index, row) in self.rows.iter().enumerate() {
+            let other_row = match other.rows.get(index) {
+                Some(x) => x,
+                _ => return false,
+            };
+            if other_row != row {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::Document;
+    use crate::Position;
 
     #[test]
-    fn test_delete() {
-        let doc = Document::default();
+    fn test_insert_empty() {
+        let mut doc = Document::default();
+        let doc_test = Document::open("./tests/test1.txt").unwrap();
+        doc.insert(&Position { x: 0, y: 0 }, 'c');
+        assert_eq!(doc_test, doc);
+    }
+
+    #[test]
+    fn test_insert_simple() {
+        let mut doc = Document::open("./tests/2.in").unwrap();
+        let doc_test = Document::open("./tests/2.out").unwrap();
+        doc.insert(&Position { x: 10, y: 2 }, 'k');
+        assert_eq!(doc_test, doc);
+    }
+
+    #[test]
+    fn test_insert_newline() {
+        let mut doc = Document::open("./tests/3.in").unwrap();
+        let doc_test = Document::open("./tests/3.out").unwrap();
+        doc.insert_newline(&Position { x: 14, y: 0 });
+        assert_eq!(doc_test, doc);
     }
 }
