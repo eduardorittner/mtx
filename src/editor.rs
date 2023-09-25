@@ -86,7 +86,7 @@ impl Editor {
             cursor_position: Position::default(),
             offset: Position::default(),
             status_message: StatusMessage::from(initial_status),
-            mode: Mode::Insert,
+            mode: Mode::Normal,
         }
     }
 
@@ -107,29 +107,50 @@ impl Editor {
 
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
         let pressed_key = Terminal::read_key()?;
-        match pressed_key {
-            Key::Ctrl('q') => self.should_quit = true,
-            Key::Ctrl('s') => self.save(false),
-            Key::Ctrl('w') => self.save(true),
-            Key::Delete => self.document.delete(&self.cursor_position),
-            Key::Backspace => {
-                self.move_cursor(Key::Left);
-                if self.cursor_position.y != 0 || self.cursor_position.x != 0 {
-                    self.document.delete(&self.cursor_position);
+        match self.mode {
+            Mode::Normal => match pressed_key {
+                Key::Ctrl('q') => self.should_quit = true,
+                Key::Char('h') => self.move_cursor(Key::Left),
+                Key::Char('j') => self.move_cursor(Key::Down),
+                Key::Char('k') => self.move_cursor(Key::Up),
+                Key::Char('l') => self.move_cursor(Key::Right),
+                Key::Char('i') => self.mode = Mode::Insert,
+                Key::Char('v') => self.mode = Mode::Visual,
+                Key::Char('a') => {
+                    self.mode = Mode::Insert;
+                    self.move_cursor(Key::Right);
                 }
-            }
-            Key::Char('\n') => {
-                self.document.insert_newline(&self.cursor_position);
-                // Hacky way to do this since move_cursor(Key::Down)
-                // records the cursor's current position
-                self.cursor_position.y += 1;
-                self.cursor_position.x = 0;
-            }
-            Key::Char(c) => {
-                self.document.insert(&self.cursor_position, c);
-                self.move_cursor(Key::Right);
-            }
-            #[rustfmt::skip]
+                Key::Char(' ') => match Terminal::read_key()? {
+                    Key::Char('s') => self.save(false),
+                    _ => (),
+                },
+                _ => (),
+            },
+            Mode::Insert => {
+                match pressed_key {
+                    Key::Ctrl('q') => self.should_quit = true,
+                    Key::Ctrl('c') => self.mode = Mode::Normal,
+                    Key::Ctrl('s') => self.save(false),
+                    Key::Ctrl('w') => self.save(true),
+                    Key::Delete => self.document.delete(&self.cursor_position),
+                    Key::Backspace => {
+                        self.move_cursor(Key::Left);
+                        if self.cursor_position.y != 0 || self.cursor_position.x != 0 {
+                            self.document.delete(&self.cursor_position);
+                        }
+                    }
+                    Key::Char('\n') => {
+                        self.document.insert_newline(&self.cursor_position);
+                        // Hacky way to do this since move_cursor(Key::Down)
+                        // records the cursor's current position
+                        self.cursor_position.y += 1;
+                        self.cursor_position.x = 0;
+                    }
+                    Key::Char(c) => {
+                        self.document.insert(&self.cursor_position, c);
+                        self.move_cursor(Key::Right);
+                    }
+                    #[rustfmt::skip]
             Key::Up
             | Key::Down
             | Key::Left
@@ -138,8 +159,13 @@ impl Editor {
             | Key::Ctrl('u') => {
                 self.move_cursor(pressed_key)
             },
-            _ => (),
+                    _ => (),
+                }
+            }
+            Mode::Visual => {}
+            Mode::Command => {}
         }
+
         self.scroll();
         Ok(())
     }
@@ -216,21 +242,11 @@ impl Editor {
                     x = width - 1;
                 } else if x > 0 && width > 0 {
                     x -= 1;
-                } else if y > 0 {
-                    y -= 1;
-                    if let Some(row) = self.document.row(y) {
-                        x = row.len();
-                    } else {
-                        x = 0;
-                    }
                 }
             }
             Key::Right => {
-                if x < width {
+                if x < width.saturating_sub(1) {
                     x += 1;
-                } else if y < height.saturating_sub(1) {
-                    y += 1;
-                    x = 0;
                 }
             }
             Key::Ctrl('u') => {
@@ -286,7 +302,7 @@ impl Editor {
             self.mode = Mode::Insert;
             return Ok(None);
         }
-        self.mode = Mode::Insert;
+        self.mode = Mode::Normal;
         Ok(Some(result))
     }
 
@@ -295,7 +311,7 @@ impl Editor {
         // position, and display it according to the current line
 
         match self.mode {
-            Mode::Insert => {
+            Mode::Insert | Mode::Normal => {
                 let Position { x, y } = self.cursor_position;
                 let width = if let Some(row) = self.document.row(y) {
                     row.len()
@@ -395,7 +411,9 @@ impl Editor {
     pub fn draw_row(&self, row: &Row) {
         let width = self.terminal.size().width as usize;
         let start = self.offset.x;
+        // Decrement size of coument in digits
         let end = self.offset.x.saturating_add(width);
+        // Not taking into account side bar size
         let row = row.render(start, end);
         println!("{}\r", row)
     }

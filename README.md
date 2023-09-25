@@ -37,5 +37,9 @@ for now as there is no "append" insert capability
 
 ### Visual
 
-- Add line count on the left
+- Add line count on the left (probably not worth it for the hassle right now)
 - Add basic syntax highlighting support
+
+### Rendering
+
+- Maybe only render what has been updated(?)
