@@ -3,6 +3,17 @@
 Minimal text editor made in rust following along with hecto-tutorial
 and heavily inspired by NeoVim. 
 
+## Using MTX
+
+Mtx is based on neovim's (and therefore vim) style of text editing, which
+are heavily reliant on "modes". The application starts in normal mode, where
+you can move around using "h", "j", "k", and "l" to move around (or the arrow
+keys). To enter insert mode press "i", to insert before the cursor, or "a" to
+insert after it. To go back to normal mode press "Ctrl-c" or "Esc".
+To save a file in insert mode, press "Ctrl-s" to save to the file's current
+name or "Ctrl-w" to save to a different name. In normal mode press "<Space>s" 
+and "<Space>w", respectively.
+
 ## Objectives
 
 - Learn rust
@@ -19,6 +30,8 @@ to a piece table representation for very large files.
 ### Project structure
 - Add automated testing for basic functions such as insert, remove, etc. with
 input and expected output
+- Add way to load mappings from a mtx.conf file
+- Hot reloading of config(?)
 
 ### Cursor
 

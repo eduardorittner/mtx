@@ -11,7 +11,7 @@ const STATUS_FG_COLOR: color::Rgb = color::Rgb(200, 200, 200);
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[repr(u8)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Mode {
     Normal = 0,
     Insert,
@@ -109,9 +109,13 @@ impl Editor {
             Mode::Normal => match pressed_key {
                 Key::Ctrl('q') => self.should_quit = true,
                 Key::Char('h') => self.move_cursor(Key::Left),
+                Key::Left => self.move_cursor(Key::Left),
                 Key::Char('j') => self.move_cursor(Key::Down),
+                Key::Down => self.move_cursor(Key::Down),
                 Key::Char('k') => self.move_cursor(Key::Up),
+                Key::Up => self.move_cursor(Key::Up),
                 Key::Char('l') => self.move_cursor(Key::Right),
+                Key::Right => self.move_cursor(Key::Right),
                 Key::Char('i') => self.mode = Mode::Insert,
                 Key::Char('v') => self.mode = Mode::Visual,
                 Key::Char('a') => {
@@ -120,7 +124,7 @@ impl Editor {
                 }
                 Key::Char(' ') => match Terminal::read_key()? {
                     Key::Char('s') => self.save(false),
-                    Key::Char('S') => self.save(true),
+                    Key::Char('w') => self.save(true),
                     _ => (),
                 },
                 _ => (),
@@ -274,6 +278,7 @@ impl Editor {
         // self.mode = insert before every return?
         // maybe a wrapper for command line prompts?
 
+        let last_mode = self.mode.clone();
         self.mode = Mode::Command;
         let mut result = String::new();
         loop {
@@ -284,7 +289,7 @@ impl Editor {
                 Key::Char('\n') => break,
                 Key::Ctrl('q') => {
                     result.truncate(0);
-                    self.mode = Mode::Insert;
+                    self.mode = last_mode.clone();
                     break;
                 }
                 Key::Char(c) => {
@@ -297,10 +302,10 @@ impl Editor {
         }
         self.status_message = StatusMessage::from(String::new());
         if result.is_empty() {
-            self.mode = Mode::Insert;
+            self.mode = last_mode;
             return Ok(None);
         }
-        self.mode = Mode::Normal;
+        self.mode = last_mode;
         Ok(Some(result))
     }
 
