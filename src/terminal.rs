@@ -15,18 +15,7 @@ pub struct Terminal {
 }
 
 impl Terminal {
-    pub fn default() -> Result<Self, std::io::Error> {
-        let size = termion::terminal_size()?;
-        Terminal::clear_screen();
-        Ok(Self {
-            size: Size {
-                width: size.0,
-                height: size.1.saturating_sub(2),
-            },
-            _stdout: stdout().into_raw_mode()?,
-        })
-    }
-
+    #[must_use]
     pub fn size(&self) -> &Size {
         &self.size
     }
@@ -35,6 +24,7 @@ impl Terminal {
         print!("{}", termion::clear::All);
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     pub fn cursor_position(position: &Position) {
         let Position { mut x, mut y } = position;
         x = x.saturating_add(1);
@@ -82,5 +72,19 @@ impl Terminal {
 
     pub fn reset_fg_color() {
         print!("{}", color::Fg(color::Reset));
+    }
+}
+
+impl Default for Terminal {
+    fn default() -> Self {
+        let size = termion::terminal_size().unwrap();
+        Terminal::clear_screen();
+        Self {
+            size: Size {
+                width: size.0,
+                height: size.1.saturating_sub(2),
+            },
+            _stdout: stdout().into_raw_mode().unwrap(),
+        }
     }
 }

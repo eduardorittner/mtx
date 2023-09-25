@@ -67,21 +67,19 @@ impl Editor {
         let args: Vec<String> = env::args().collect();
         let mut initial_status = String::from("HELP: Ctrl-Q = quit");
         let document = if let Some(file_name) = args.get(1) {
-            let doc = match Document::open(file_name) {
-                Ok(doc) => doc,
-                Err(_) => {
-                    initial_status = format!("Err: could not open file {}", file_name);
-                    Document::default()
-                }
-            };
-            doc
+            if let Ok(doc) = Document::open(file_name) {
+                doc
+            } else {
+                initial_status = format!("Err: could not open file {file_name}");
+                Document::default()
+            }
         } else {
             Document::default()
         };
 
         Self {
             should_quit: false,
-            terminal: Terminal::default().expect("Failed to initialize terminal"),
+            terminal: Terminal::default(),
             document,
             cursor_position: Position::default(),
             offset: Position::default(),
@@ -122,6 +120,7 @@ impl Editor {
                 }
                 Key::Char(' ') => match Terminal::read_key()? {
                     Key::Char('s') => self.save(false),
+                    Key::Char('S') => self.save(true),
                     _ => (),
                 },
                 _ => (),
@@ -155,10 +154,9 @@ impl Editor {
             | Key::Down
             | Key::Left
             | Key::Right
-            | Key::Ctrl('d')
-            | Key::Ctrl('u') => {
-                self.move_cursor(pressed_key)
-            },
+            | Key::Ctrl('u' | 'd') => {
+                self.move_cursor(pressed_key);
+            }
                     _ => (),
                 }
             }
@@ -197,9 +195,9 @@ impl Editor {
             self.status_message = StatusMessage::from(format!(
                 "{} written",
                 self.document.file_name.clone().unwrap()
-            ))
+            ));
         } else {
-            self.status_message = StatusMessage::from("Error writing file".to_string())
+            self.status_message = StatusMessage::from("Error writing file".to_string());
         }
     }
 
@@ -279,7 +277,7 @@ impl Editor {
         self.mode = Mode::Command;
         let mut result = String::new();
         loop {
-            self.status_message = StatusMessage::from(format!("{}{}", prompt, result));
+            self.status_message = StatusMessage::from(format!("{prompt}{result}"));
             self.refresh_screen()?;
             match Terminal::read_key()? {
                 Key::Backspace => result.truncate(result.len().saturating_sub(1)),
@@ -336,11 +334,11 @@ impl Editor {
                 x: self.status_message.text.len(),
                 y: (self.terminal.size().height + 1) as usize,
             }),
-            _ => (),
+            Mode::Visual => (),
         }
     }
 
-    #[allow(clippy::integer_arithmetic, clippy::integer_division)]
+    #[allow(clippy::arithmetic_side_effects, clippy::integer_division)]
     fn draw_status_bar(&self) {
         let width = self.terminal.size().width as usize;
         let mut status = "[No_name]".to_string();
@@ -355,7 +353,7 @@ impl Editor {
             status.truncate(20);
         }
 
-        status = format!("{}{}", status, modified);
+        status = format!("{status}{modified}");
 
         let line_indicator = format! {
             "{},{}   {}%",
@@ -371,16 +369,16 @@ impl Editor {
             },
         };
 
-        #[allow(clippy::integer_arithmetic)]
+        #[allow(clippy::arithmetic_side_effects)]
         let len = status.len() + line_indicator.len();
 
         status.push_str(&" ".repeat(width.saturating_sub(len)));
-        status = format!("{}{}", status, line_indicator);
+        status = format!("{status}{line_indicator}");
         status.truncate(width);
 
         Terminal::set_bg_color(STATUS_BG_COLOR);
         Terminal::set_fg_color(STATUS_FG_COLOR);
-        println!("{}\r", status);
+        println!("{status}\r");
         Terminal::reset_bg_color();
         Terminal::reset_fg_color();
     }
@@ -393,19 +391,19 @@ impl Editor {
         if message.time.elapsed().as_secs() < 5 {
             let mut text = message.text.clone();
             text.truncate(self.terminal.size().width as usize);
-            print!("{}", text);
+            print!("{text}");
         }
     }
     fn draw_welcome_message(&self) {
-        let mut welcome_message = format!("mtx editor -- version {}", VERSION);
+        let mut welcome_message = format!("mtx editor -- version {VERSION}");
         let width = self.terminal.size().width as usize;
         let len = welcome_message.len();
-        #[allow(clippy::integer_division, clippy::integer_arithmetic)]
+        #[allow(clippy::integer_division, clippy::arithmetic_side_effects)]
         let padding = width.saturating_sub(len) / 2;
         let spaces = " ".repeat(padding.saturating_sub(1));
-        welcome_message = format!("~{}{}", spaces, welcome_message);
+        welcome_message = format!("~{spaces}{welcome_message}");
         welcome_message.truncate(width);
-        println!("{}\r", welcome_message);
+        println!("{welcome_message}\r");
     }
 
     pub fn draw_row(&self, row: &Row) {
@@ -415,7 +413,7 @@ impl Editor {
         let end = self.offset.x.saturating_add(width);
         // Not taking into account side bar size
         let row = row.render(start, end);
-        println!("{}\r", row)
+        println!("{row}\r");
     }
 
     fn draw_rows(&self) {

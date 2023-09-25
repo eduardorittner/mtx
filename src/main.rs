@@ -1,9 +1,4 @@
-#![warn(
-    clippy::all,
-    clippy::pedantic,
-    clippy::restriction,
-    clippy::corecteness
-)]
+#![warn(clippy::all, clippy::pedantic, clippy::correctness)]
 #![allow(
     clippy::missing_errors_doc,
     clippy::implicit_return,
@@ -13,6 +8,7 @@
     clippy::wildcard_enum_match_arm,
     clippy::else_if_without_else
 )]
+
 mod document;
 mod editor;
 mod row;
@@ -25,5 +21,6 @@ pub use row::Row;
 pub use terminal::Terminal;
 
 fn main() {
+    #[allow(clippy::single_call_fn)]
     Editor::default().run();
 }

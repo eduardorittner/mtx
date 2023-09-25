@@ -1,5 +1,6 @@
 use crate::Position;
 use crate::Row;
+use std::cmp::Ordering;
 use std::fs;
 use std::io::{Error, Write};
 
@@ -49,22 +50,23 @@ impl Document {
     #[allow(clippy::indexing_slicing)]
     pub fn insert(&mut self, at: &Position, c: char) {
         let len = self.rows.len();
-        if at.y > len {
-            return;
-        }
-        if at.y == len {
-            self.dirty = true;
-            let mut row = Row::default();
-            row.insert(0, c);
-            self.rows.push(row);
-        } else if at.y < len {
-            self.dirty = true;
-            let row = &mut self.rows[at.y];
-            row.insert(at.x, c);
+        match at.y.cmp(&len) {
+            Ordering::Greater => (),
+            Ordering::Equal => {
+                self.dirty = true;
+                let mut row = Row::default();
+                row.insert(0, c);
+                self.rows.push(row);
+            }
+            Ordering::Less => {
+                self.dirty = true;
+                let row = &mut self.rows[at.y];
+                row.insert(at.x, c);
+            }
         }
     }
 
-    #[allow(clippy::integer_arithmetic, clippy::indexing_slicing)]
+    #[allow(clippy::arithmetic_side_effects, clippy::indexing_slicing)]
     pub fn insert_newline(&mut self, at: &Position) {
         let len = self.len();
         if at.y > len {
@@ -79,7 +81,7 @@ impl Document {
         self.rows.insert(at.y + 1, new_row);
     }
 
-    #[allow(clippy::indexing_slicing, clippy::integer_arithmetic)]
+    #[allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
     pub fn delete(&mut self, at: &Position) {
         // Panics when deleting the last line sometimes
         let len = self.rows.len();
@@ -98,18 +100,22 @@ impl Document {
         }
     }
 
+    #[must_use]
     pub fn row(&self, index: usize) -> Option<&Row> {
         self.rows.get(index)
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.rows.is_empty()
     }
 
+    #[must_use]
     pub fn is_dirty(&self) -> bool {
         self.dirty
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.rows.len()
     }
