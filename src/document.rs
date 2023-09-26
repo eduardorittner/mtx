@@ -14,10 +14,7 @@ pub struct Document {
 impl Document {
     pub fn open(filename: &str) -> Result<Self, std::io::Error> {
         let contents = fs::read_to_string(filename)?;
-        let mut rows = Vec::new();
-        for value in contents.lines() {
-            rows.push(Row::from(value));
-        }
+        let rows: Vec<Row> = contents.lines().map(Row::from).collect();
         Ok(Self {
             rows,
             file_name: Some(filename.to_string()),
@@ -66,7 +63,7 @@ impl Document {
         }
     }
 
-    #[allow(clippy::arithmetic_side_effects, clippy::indexing_slicing)]
+    #[allow(clippy::indexing_slicing)]
     pub fn insert_newline(&mut self, at: &Position) {
         let len = self.len();
         if at.y > len {
@@ -78,10 +75,10 @@ impl Document {
             return;
         }
         let new_row = self.rows[at.y].split(at.x);
-        self.rows.insert(at.y + 1, new_row);
+        self.rows.insert(at.y.saturating_add(1), new_row);
     }
 
-    #[allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
+    #[allow(clippy::indexing_slicing)]
     pub fn delete(&mut self, at: &Position) {
         // Panics when deleting the last line sometimes
         let len = self.rows.len();
@@ -90,8 +87,8 @@ impl Document {
         }
 
         self.dirty = true;
-        if at.x == self.rows[at.y].len() && at.y + 1 < len {
-            let next_row = self.rows.remove(at.y + 1);
+        if at.x == self.rows[at.y].len() && at.y.saturating_add(1) < len {
+            let next_row = self.rows.remove(at.y.saturating_add(1));
             let row = &mut self.rows[at.y];
             row.append(&next_row);
         } else {
@@ -124,15 +121,14 @@ impl Document {
 impl PartialEq for Document {
     fn eq(&self, other: &Self) -> bool {
         for (index, row) in self.rows.iter().enumerate() {
-            let other_row = match other.rows.get(index) {
-                Some(x) => x,
-                _ => return false,
+            let Some(other_row) = other.rows.get(index) else {
+                return false;
             };
             if other_row != row {
                 return false;
             }
         }
-        return true;
+        true
     }
 }
 

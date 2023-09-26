@@ -53,13 +53,13 @@ impl Editor {
     pub fn run(&mut self) {
         loop {
             if let Err(error) = self.refresh_screen() {
-                die(error);
+                die(&error);
             }
             if self.should_quit {
                 break;
             }
             if let Err(error) = self.process_keypress() {
-                die(error);
+                die(&error);
             }
         }
     }
@@ -108,14 +108,10 @@ impl Editor {
         match self.mode {
             Mode::Normal => match pressed_key {
                 Key::Ctrl('q') => self.should_quit = true,
-                Key::Char('h') => self.move_cursor(Key::Left),
-                Key::Left => self.move_cursor(Key::Left),
-                Key::Char('j') => self.move_cursor(Key::Down),
-                Key::Down => self.move_cursor(Key::Down),
-                Key::Char('k') => self.move_cursor(Key::Up),
-                Key::Up => self.move_cursor(Key::Up),
-                Key::Char('l') => self.move_cursor(Key::Right),
-                Key::Right => self.move_cursor(Key::Right),
+                Key::Char('h') | Key::Left => self.move_cursor(Key::Left),
+                Key::Char('j') | Key::Down => self.move_cursor(Key::Down),
+                Key::Char('k') | Key::Up => self.move_cursor(Key::Up),
+                Key::Char('l') | Key::Right => self.move_cursor(Key::Right),
                 Key::Char('i') => self.mode = Mode::Insert,
                 Key::Char('v') => self.mode = Mode::Visual,
                 Key::Char('a') => {
@@ -343,7 +339,6 @@ impl Editor {
         }
     }
 
-    #[allow(clippy::arithmetic_side_effects, clippy::integer_division)]
     fn draw_status_bar(&self) {
         let width = self.terminal.size().width as usize;
         let mut status = "[No_name]".to_string();
@@ -369,13 +364,13 @@ impl Editor {
                     0
                 }
                 else {
-                    (self.cursor_position.y*100) / self.document.len()
+                    (self.cursor_position.y.saturating_mul(100))
+                        .saturating_div(self.document.len())
                 }
             },
         };
 
-        #[allow(clippy::arithmetic_side_effects)]
-        let len = status.len() + line_indicator.len();
+        let len = status.len().saturating_add(line_indicator.len());
 
         status.push_str(&" ".repeat(width.saturating_sub(len)));
         status = format!("{status}{line_indicator}");
@@ -403,8 +398,7 @@ impl Editor {
         let mut welcome_message = format!("mtx editor -- version {VERSION}");
         let width = self.terminal.size().width as usize;
         let len = welcome_message.len();
-        #[allow(clippy::integer_division, clippy::arithmetic_side_effects)]
-        let padding = width.saturating_sub(len) / 2;
+        let padding = width.saturating_sub(len).saturating_div(2);
         let spaces = " ".repeat(padding.saturating_sub(1));
         welcome_message = format!("~{spaces}{welcome_message}");
         welcome_message.truncate(width);
@@ -441,7 +435,7 @@ impl Editor {
     }
 }
 
-fn die(e: std::io::Error) {
+fn die(e: &std::io::Error) {
     Terminal::clear_screen();
     panic!("{}", e);
 }

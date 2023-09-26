@@ -18,22 +18,19 @@ impl From<&str> for Row {
 
 impl Row {
     #[must_use]
+
     pub fn render(&self, start: usize, end: usize) -> String {
         let end = cmp::min(end, self.string.len());
         let start = cmp::min(start, end);
-        let mut result = String::new();
-        #[allow(clippy::arithmetic_side_effects)]
-        for grapheme in self.string[..]
+        // let mut result = String::new();
+        let result: String = self
+            .string
             .graphemes(true)
             .skip(start)
             .take(end - start)
-        {
-            if grapheme == "\t" {
-                result.push(' ');
-            } else {
-                result.push_str(grapheme);
-            }
-        }
+            .map(|grapheme| if grapheme == "\t" { " " } else { grapheme })
+            .collect();
+
         result
     }
 
