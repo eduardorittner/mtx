@@ -88,6 +88,7 @@ impl Document {
 
         self.dirty = true;
         if at.x == self.rows[at.y].len() && at.y.saturating_add(1) < len {
+            // When at the end of a line
             let next_row = self.rows.remove(at.y.saturating_add(1));
             let row = &mut self.rows[at.y];
             row.append(&next_row);
@@ -158,6 +159,30 @@ mod tests {
         let mut doc = Document::open("./tests/3.in").unwrap();
         let doc_test = Document::open("./tests/3.out").unwrap();
         doc.insert_newline(&Position { x: 14, y: 0 });
+        assert_eq!(doc_test, doc);
+    }
+
+    #[test]
+    fn test_delete_to_empty() {
+        let mut doc = Document::open("./tests/4.in").unwrap();
+        let doc_test = Document::default();
+        doc.delete(&Position { x: 0, y: 0 });
+        assert_eq!(doc_test, doc);
+    }
+
+    #[test]
+    fn test_delete_simple() {
+        let mut doc = Document::open("./tests/5.in").unwrap();
+        let doc_test = Document::open("./tests/5.out").unwrap();
+        doc.delete(&Position { x: 10, y: 1 });
+        assert_eq!(doc_test, doc);
+    }
+
+    #[test]
+    fn test_delete_newline() {
+        let mut doc = Document::open("./tests/5.in").unwrap();
+        let doc_test = Document::open("./tests/5.out").unwrap();
+        doc.delete(&Position { x: 0, y: 1 });
         assert_eq!(doc_test, doc);
     }
 }

@@ -25,6 +25,12 @@ also a nice way to check for their practical differences in speed, situations, e
 That way, you could use a gap buffer for everything but have the ability to change
 to a piece table representation for very large files.
 
+## What I'm currently doing
+
+- Abstracting all commands to a shared interface, for easier chaining and composition
+of commands, in the hopes of removing all the match statements and moving all that logic
+to a HashMap of strings (command names) and functions (commands).
+
 ## TODOS
 
 ### Project structure
@@ -38,14 +44,14 @@ input and expected output
 - Cursor doesn't "remember" its position after going to a line that's smaller
 than it (should be fixed with draw-cursor func) -- DONE
 - Cursor is able to go until line.len(), not line.len() - 1. This is necessary
-for now as there is no "append" insert capability
+for now as there is no "append" insert capability -- DONE
 - Cursor is not shown on status message prompt -- DONE
-- Backspace acting as DELETE when at the start of a line
+- Backspace acting as DELETE when at the start of a line -- DONE
 
 ### Text editing
 
-- Add editing text capabilities (insert, remove, select)
-- Add modes (normal, insert, maybe visual)
+- Add editing text capabilities (insert, remove, select) -- DONE
+- Add modes (normal, insert, maybe visual) -- DONE
 - Undo/Redo operation
 - Search 
 

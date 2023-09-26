@@ -1,3 +1,6 @@
+use crate::commands::{cursor_cmds, edit_cmds};
+use crate::mappings;
+use crate::mappings::Mappings;
 use crate::Document;
 use crate::Row;
 use crate::Terminal;
@@ -105,18 +108,49 @@ impl Editor {
 
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
         let pressed_key = Terminal::read_key()?;
+        let map = Mappings::default();
         match self.mode {
             Mode::Normal => match pressed_key {
                 Key::Ctrl('q') => self.should_quit = true,
-                Key::Char('h') | Key::Left => self.move_cursor(Key::Left),
-                Key::Char('j') | Key::Down => self.move_cursor(Key::Down),
-                Key::Char('k') | Key::Up => self.move_cursor(Key::Up),
-                Key::Char('l') | Key::Right => self.move_cursor(Key::Right),
+                Key::Char(x) => map.call_fn(
+                    &x.to_string(),
+                    &mut self.cursor_position,
+                    &self.document,
+                    vec![false, false],
+                ),
+                // Key::Char('h') | Key::Left => {
+                //     cursor_cmds::move_cursor_left(
+                //         &mut self.cursor_position,
+                //         &self.document,
+                //         vec![false],
+                //     );
+                // }
+                // Key::Char('j') | Key::Down => {
+                //     cursor_cmds::move_cursor_down(
+                //         &mut self.cursor_position,
+                //         &self.document,
+                //         vec![],
+                //     );
+                // }
+                // Key::Char('k') | Key::Up => {
+                //     cursor_cmds::move_cursor_up(&mut self.cursor_position, &self.document, vec![]);
+                // }
+                // Key::Char('l') | Key::Right => {
+                //     cursor_cmds::move_cursor_right(
+                //         &mut self.cursor_position,
+                //         &self.document,
+                //         vec![false, false],
+                //     );
+                // }
                 Key::Char('i') => self.mode = Mode::Insert,
                 Key::Char('v') => self.mode = Mode::Visual,
                 Key::Char('a') => {
+                    cursor_cmds::move_cursor_right(
+                        &mut self.cursor_position,
+                        &self.document,
+                        vec![true, false],
+                    );
                     self.mode = Mode::Insert;
-                    self.move_cursor(Key::Right);
                 }
                 Key::Char(' ') => match Terminal::read_key()? {
                     Key::Char('s') => self.save(false),
@@ -131,23 +165,34 @@ impl Editor {
                     Key::Ctrl('c') => self.mode = Mode::Normal,
                     Key::Ctrl('s') => self.save(false),
                     Key::Ctrl('w') => self.save(true),
-                    Key::Delete => self.document.delete(&self.cursor_position),
+                    Key::Delete => {
+                        edit_cmds::delete(&mut self.cursor_position, &mut self.document);
+                    }
                     Key::Backspace => {
-                        self.move_cursor(Key::Left);
-                        if self.cursor_position.y != 0 || self.cursor_position.x != 0 {
-                            self.document.delete(&self.cursor_position);
-                        }
+                        edit_cmds::delete_backspace(&mut self.cursor_position, &mut self.document);
                     }
                     Key::Char('\n') => {
-                        self.document.insert_newline(&self.cursor_position);
+                        edit_cmds::insert_newline(&mut self.cursor_position, &mut self.document);
+                        cursor_cmds::move_cursor_bol(
+                            &mut self.cursor_position,
+                            &self.document,
+                            vec![],
+                        );
+                        cursor_cmds::move_cursor_down(
+                            &mut self.cursor_position,
+                            &self.document,
+                            vec![],
+                        );
                         // Hacky way to do this since move_cursor(Key::Down)
                         // records the cursor's current position
-                        self.cursor_position.y += 1;
-                        self.cursor_position.x = 0;
                     }
                     Key::Char(c) => {
                         self.document.insert(&self.cursor_position, c);
-                        self.move_cursor(Key::Right);
+                        cursor_cmds::move_cursor_right(
+                            &mut self.cursor_position,
+                            &self.document,
+                            vec![true, false],
+                        );
                     }
                     #[rustfmt::skip]
             Key::Up
@@ -222,30 +267,36 @@ impl Editor {
         let terminal_height = self.terminal.size().height as usize;
         let Position { mut y, mut x } = self.cursor_position;
         let height = self.document.len();
+        let mut flag = false;
         let width = if let Some(row) = self.document.row(y) {
             row.len()
         } else {
             0
         };
         match key {
-            Key::Up => y = y.saturating_sub(1),
+            Key::Up => {
+                cursor_cmds::move_cursor_up(&mut self.cursor_position, &self.document, vec![]);
+                flag = true;
+            }
             Key::Down => {
-                if y < height.saturating_sub(1) {
-                    y = y.saturating_add(1);
-                }
+                cursor_cmds::move_cursor_down(&mut self.cursor_position, &self.document, vec![]);
+                flag = true;
             }
             Key::Left => {
-                // ew wtf why would you do this
-                if x > width && width > 0 {
-                    x = width - 1;
-                } else if x > 0 && width > 0 {
-                    x -= 1;
-                }
+                cursor_cmds::move_cursor_left(
+                    &mut self.cursor_position,
+                    &self.document,
+                    vec![false],
+                );
+                flag = true;
             }
             Key::Right => {
-                if x < width.saturating_sub(1) {
-                    x += 1;
-                }
+                cursor_cmds::move_cursor_right(
+                    &mut self.cursor_position,
+                    &self.document,
+                    vec![false, false],
+                );
+                flag = true;
             }
             Key::Ctrl('u') => {
                 y = if y > terminal_height {
@@ -266,7 +317,9 @@ impl Editor {
             _ => (),
         }
 
-        self.cursor_position = Position { x, y }
+        if !flag {
+            self.cursor_position = Position { x, y }
+        }
     }
 
     fn prompt(&mut self, prompt: &str) -> Result<Option<String>, std::io::Error> {
@@ -310,6 +363,7 @@ impl Editor {
         // position, and display it according to the current line
 
         match self.mode {
+            // cursor in insert mode cant be at the end of line
             Mode::Insert | Mode::Normal => {
                 let Position { x, y } = self.cursor_position;
                 let width = if let Some(row) = self.document.row(y) {
