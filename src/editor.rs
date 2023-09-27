@@ -1,6 +1,4 @@
 use crate::commands::{cursor_cmds, edit_cmds};
-use crate::mappings;
-use crate::mappings::Mappings;
 use crate::Document;
 use crate::Row;
 use crate::Terminal;
@@ -108,47 +106,34 @@ impl Editor {
 
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
         let pressed_key = Terminal::read_key()?;
-        let map = Mappings::default();
         match self.mode {
             Mode::Normal => match pressed_key {
                 Key::Ctrl('q') => self.should_quit = true,
-                Key::Char(x) => map.call_fn(
-                    &x.to_string(),
-                    &mut self.cursor_position,
-                    &self.document,
-                    vec![false, false],
-                ),
-                // Key::Char('h') | Key::Left => {
-                //     cursor_cmds::move_cursor_left(
-                //         &mut self.cursor_position,
-                //         &self.document,
-                //         vec![false],
-                //     );
-                // }
-                // Key::Char('j') | Key::Down => {
-                //     cursor_cmds::move_cursor_down(
-                //         &mut self.cursor_position,
-                //         &self.document,
-                //         vec![],
-                //     );
-                // }
-                // Key::Char('k') | Key::Up => {
-                //     cursor_cmds::move_cursor_up(&mut self.cursor_position, &self.document, vec![]);
-                // }
-                // Key::Char('l') | Key::Right => {
-                //     cursor_cmds::move_cursor_right(
-                //         &mut self.cursor_position,
-                //         &self.document,
-                //         vec![false, false],
-                //     );
-                // }
+                Key::Char('h') | Key::Left => {
+                    cursor_cmds::move_cursor_left(&mut self.cursor_position, &self.document, false);
+                }
+                Key::Char('j') | Key::Down => {
+                    cursor_cmds::move_cursor_down(&mut self.cursor_position, &self.document);
+                }
+                Key::Char('k') | Key::Up => {
+                    cursor_cmds::move_cursor_up(&mut self.cursor_position, &self.document);
+                }
+                Key::Char('l') | Key::Right => {
+                    cursor_cmds::move_cursor_right(
+                        &mut self.cursor_position,
+                        &self.document,
+                        false,
+                        false,
+                    );
+                }
                 Key::Char('i') => self.mode = Mode::Insert,
                 Key::Char('v') => self.mode = Mode::Visual,
                 Key::Char('a') => {
                     cursor_cmds::move_cursor_right(
                         &mut self.cursor_position,
                         &self.document,
-                        vec![true, false],
+                        true,
+                        false,
                     );
                     self.mode = Mode::Insert;
                 }
@@ -173,16 +158,8 @@ impl Editor {
                     }
                     Key::Char('\n') => {
                         edit_cmds::insert_newline(&mut self.cursor_position, &mut self.document);
-                        cursor_cmds::move_cursor_bol(
-                            &mut self.cursor_position,
-                            &self.document,
-                            vec![],
-                        );
-                        cursor_cmds::move_cursor_down(
-                            &mut self.cursor_position,
-                            &self.document,
-                            vec![],
-                        );
+                        cursor_cmds::move_cursor_bol(&mut self.cursor_position, &self.document);
+                        cursor_cmds::move_cursor_down(&mut self.cursor_position, &self.document);
                         // Hacky way to do this since move_cursor(Key::Down)
                         // records the cursor's current position
                     }
@@ -191,7 +168,8 @@ impl Editor {
                         cursor_cmds::move_cursor_right(
                             &mut self.cursor_position,
                             &self.document,
-                            vec![true, false],
+                            true,
+                            false,
                         );
                     }
                     #[rustfmt::skip]
@@ -275,26 +253,23 @@ impl Editor {
         };
         match key {
             Key::Up => {
-                cursor_cmds::move_cursor_up(&mut self.cursor_position, &self.document, vec![]);
+                cursor_cmds::move_cursor_up(&mut self.cursor_position, &self.document);
                 flag = true;
             }
             Key::Down => {
-                cursor_cmds::move_cursor_down(&mut self.cursor_position, &self.document, vec![]);
+                cursor_cmds::move_cursor_down(&mut self.cursor_position, &self.document);
                 flag = true;
             }
             Key::Left => {
-                cursor_cmds::move_cursor_left(
-                    &mut self.cursor_position,
-                    &self.document,
-                    vec![false],
-                );
+                cursor_cmds::move_cursor_left(&mut self.cursor_position, &self.document, false);
                 flag = true;
             }
             Key::Right => {
                 cursor_cmds::move_cursor_right(
                     &mut self.cursor_position,
                     &self.document,
-                    vec![false, false],
+                    false,
+                    false,
                 );
                 flag = true;
             }

@@ -180,9 +180,9 @@ mod tests {
 
     #[test]
     fn test_delete_newline() {
-        let mut doc = Document::open("./tests/5.in").unwrap();
-        let doc_test = Document::open("./tests/5.out").unwrap();
-        doc.delete(&Position { x: 0, y: 1 });
+        let mut doc = Document::open("./tests/6.in").unwrap();
+        let doc_test = Document::open("./tests/6.out").unwrap();
+        doc.delete(&Position { x: 12, y: 0 });
         assert_eq!(doc_test, doc);
     }
 }

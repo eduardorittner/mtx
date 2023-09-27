@@ -11,7 +11,6 @@
 mod commands;
 mod document;
 mod editor;
-mod mappings;
 mod row;
 mod terminal;
 // mod tests;
