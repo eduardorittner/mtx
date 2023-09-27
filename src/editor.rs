@@ -116,7 +116,7 @@ impl Editor {
                     cursor_cmds::move_cursor_down(&mut self.cursor_position, &self.document);
                 }
                 Key::Char('k') | Key::Up => {
-                    cursor_cmds::move_cursor_up(&mut self.cursor_position, &self.document);
+                    cursor_cmds::move_cursor_up(&mut self.cursor_position);
                 }
                 Key::Char('l') | Key::Right => {
                     cursor_cmds::move_cursor_right(
@@ -158,13 +158,13 @@ impl Editor {
                     }
                     Key::Char('\n') => {
                         edit_cmds::insert_newline(&mut self.cursor_position, &mut self.document);
-                        cursor_cmds::move_cursor_bol(&mut self.cursor_position, &self.document);
+                        cursor_cmds::move_cursor_bol(&mut self.cursor_position);
                         cursor_cmds::move_cursor_down(&mut self.cursor_position, &self.document);
                         // Hacky way to do this since move_cursor(Key::Down)
                         // records the cursor's current position
                     }
                     Key::Char(c) => {
-                        self.document.insert(&self.cursor_position, c);
+                        edit_cmds::insert(&self.cursor_position, &mut self.document, c);
                         cursor_cmds::move_cursor_right(
                             &mut self.cursor_position,
                             &self.document,
@@ -253,7 +253,7 @@ impl Editor {
         };
         match key {
             Key::Up => {
-                cursor_cmds::move_cursor_up(&mut self.cursor_position, &self.document);
+                cursor_cmds::move_cursor_up(&mut self.cursor_position);
                 flag = true;
             }
             Key::Down => {

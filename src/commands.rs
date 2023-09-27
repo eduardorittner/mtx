@@ -11,11 +11,11 @@ pub mod cursor_cmds {
         }
     }
 
-    pub fn move_cursor_bol(at: &mut Position, doc: &Document) {
+    pub fn move_cursor_bol(at: &mut Position) {
         at.x = 0;
     }
 
-    pub fn move_cursor_up(at: &mut Position, doc: &Document) {
+    pub fn move_cursor_up(at: &mut Position) {
         at.y = at.y.saturating_sub(1);
     }
 
