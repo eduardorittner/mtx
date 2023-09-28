@@ -64,6 +64,7 @@ impl Editor {
             }
         }
     }
+
     pub fn default() -> Self {
         let args: Vec<String> = env::args().collect();
         let mut initial_status = String::from("HELP: Ctrl-Q = quit");
@@ -71,7 +72,8 @@ impl Editor {
             if let Ok(doc) = Document::open(file_name) {
                 doc
             } else {
-                initial_status = format!("Err: could not open file {file_name}");
+                initial_status =
+                    format!("Err: could not open file {file_name}");
                 Document::default()
             }
         } else {
@@ -108,12 +110,20 @@ impl Editor {
         let pressed_key = Terminal::read_key()?;
         match self.mode {
             Mode::Normal => match pressed_key {
+                // Moving around
                 Key::Ctrl('q') => self.should_quit = true,
-                Key::Char('h') | Key::Left => {
-                    cursor_cmds::move_cursor_left(&mut self.cursor_position, &self.document, false);
+                Key::Char('h') | Key::Left | Key::Backspace => {
+                    cursor_cmds::move_cursor_left(
+                        &mut self.cursor_position,
+                        &self.document,
+                        false,
+                    );
                 }
                 Key::Char('j') | Key::Down => {
-                    cursor_cmds::move_cursor_down(&mut self.cursor_position, &self.document);
+                    cursor_cmds::move_cursor_down(
+                        &mut self.cursor_position,
+                        &self.document,
+                    );
                 }
                 Key::Char('k') | Key::Up => {
                     cursor_cmds::move_cursor_up(&mut self.cursor_position);
@@ -126,6 +136,48 @@ impl Editor {
                         false,
                     );
                 }
+                Key::Ctrl('d') => cursor_cmds::move_page_up(
+                    &mut self.cursor_position,
+                    &mut self.offset,
+                    self.terminal.size().height as usize,
+                ),
+                Key::Ctrl('u') => cursor_cmds::move_page_down(
+                    &mut self.cursor_position,
+                    &mut self.offset,
+                    &self.document,
+                    self.terminal.size().height as usize,
+                ),
+
+                // Edit commands
+                Key::Char('x') => {
+                    edit_cmds::delete(&self.cursor_position, &mut self.document)
+                }
+                Key::Char('d') => match Terminal::read_key()? {
+                    Key::Char('d') => edit_cmds::delete_line(
+                        &mut self.cursor_position,
+                        &mut self.document,
+                    ),
+                    _ => (),
+                },
+                Key::Char('o') => {
+                    edit_cmds::insert_newline_below(
+                        &mut self.cursor_position,
+                        &mut self.document,
+                    );
+                    cursor_cmds::move_cursor_down(
+                        &mut self.cursor_position,
+                        &self.document,
+                    );
+                }
+                Key::Char('O') => {
+                    edit_cmds::insert_newline_above(
+                        &mut self.cursor_position,
+                        &mut self.document,
+                    );
+                    cursor_cmds::move_cursor_up(&mut self.cursor_position);
+                }
+
+                // Changing modes
                 Key::Char('i') => self.mode = Mode::Insert,
                 Key::Char('v') => self.mode = Mode::Visual,
                 Key::Char('a') => {
@@ -137,6 +189,8 @@ impl Editor {
                     );
                     self.mode = Mode::Insert;
                 }
+
+                // Misc
                 Key::Char(' ') => match Terminal::read_key()? {
                     Key::Char('s') => self.save(false),
                     Key::Char('w') => self.save(true),
@@ -144,45 +198,86 @@ impl Editor {
                 },
                 _ => (),
             },
-            Mode::Insert => {
-                match pressed_key {
-                    Key::Ctrl('q') => self.should_quit = true,
-                    Key::Ctrl('c') => self.mode = Mode::Normal,
-                    Key::Ctrl('s') => self.save(false),
-                    Key::Ctrl('w') => self.save(true),
-                    Key::Delete => {
-                        edit_cmds::delete(&mut self.cursor_position, &mut self.document);
-                    }
-                    Key::Backspace => {
-                        edit_cmds::delete_backspace(&mut self.cursor_position, &mut self.document);
-                    }
-                    Key::Char('\n') => {
-                        edit_cmds::insert_newline(&mut self.cursor_position, &mut self.document);
-                        cursor_cmds::move_cursor_bol(&mut self.cursor_position);
-                        cursor_cmds::move_cursor_down(&mut self.cursor_position, &self.document);
-                        // Hacky way to do this since move_cursor(Key::Down)
-                        // records the cursor's current position
-                    }
-                    Key::Char(c) => {
-                        edit_cmds::insert(&self.cursor_position, &mut self.document, c);
-                        cursor_cmds::move_cursor_right(
-                            &mut self.cursor_position,
-                            &self.document,
-                            true,
-                            false,
-                        );
-                    }
-                    #[rustfmt::skip]
-            Key::Up
-            | Key::Down
-            | Key::Left
-            | Key::Right
-            | Key::Ctrl('u' | 'd') => {
-                self.move_cursor(pressed_key);
-            }
-                    _ => (),
+            Mode::Insert => match pressed_key {
+                Key::Ctrl('q') => self.should_quit = true,
+                Key::Ctrl('c') => self.mode = Mode::Normal,
+                Key::Ctrl('s') => self.save(false),
+                Key::Ctrl('w') => self.save(true),
+
+                // Edit commands
+                Key::Delete => {
+                    edit_cmds::delete(
+                        &mut self.cursor_position,
+                        &mut self.document,
+                    );
                 }
-            }
+                Key::Backspace => {
+                    edit_cmds::delete_backspace(
+                        &mut self.cursor_position,
+                        &mut self.document,
+                    );
+                }
+                Key::Char('\n') => {
+                    edit_cmds::insert_newline(
+                        &mut self.cursor_position,
+                        &mut self.document,
+                    );
+                    cursor_cmds::move_cursor_bol(&mut self.cursor_position);
+                    cursor_cmds::move_cursor_down(
+                        &mut self.cursor_position,
+                        &self.document,
+                    );
+                }
+                Key::Char(c) => {
+                    edit_cmds::insert(
+                        &self.cursor_position,
+                        &mut self.document,
+                        c,
+                    );
+                    cursor_cmds::move_cursor_right(
+                        &mut self.cursor_position,
+                        &self.document,
+                        true,
+                        false,
+                    );
+                }
+                Key::Left => {
+                    cursor_cmds::move_cursor_left(
+                        &mut self.cursor_position,
+                        &self.document,
+                        false,
+                    );
+                }
+                Key::Down => {
+                    cursor_cmds::move_cursor_down(
+                        &mut self.cursor_position,
+                        &self.document,
+                    );
+                }
+                Key::Up => {
+                    cursor_cmds::move_cursor_up(&mut self.cursor_position);
+                }
+                Key::Right => {
+                    cursor_cmds::move_cursor_right(
+                        &mut self.cursor_position,
+                        &self.document,
+                        true,
+                        false,
+                    );
+                }
+                Key::Ctrl('d') => cursor_cmds::move_page_up(
+                    &mut self.cursor_position,
+                    &mut self.offset,
+                    self.terminal.size().height as usize,
+                ),
+                Key::Ctrl('u') => cursor_cmds::move_page_down(
+                    &mut self.cursor_position,
+                    &mut self.offset,
+                    &self.document,
+                    self.terminal.size().height as usize,
+                ),
+                _ => (),
+            },
             Mode::Visual => {}
             Mode::Command => {}
         }
@@ -201,14 +296,16 @@ impl Editor {
         if self.document.file_name.is_none() {
             let new_name = self.prompt("Save as: ").unwrap_or(None);
             if new_name.is_none() {
-                self.status_message = StatusMessage::from("Save aborted".to_string());
+                self.status_message =
+                    StatusMessage::from("Save aborted".to_string());
                 return;
             }
             self.document.file_name = new_name;
         } else if save_as {
             let name = self.prompt("Save as: ").unwrap_or(None);
             if name.is_none() {
-                self.status_message = StatusMessage::from("Save aborted".to_string());
+                self.status_message =
+                    StatusMessage::from("Save aborted".to_string());
                 return;
             }
             arg = name;
@@ -220,7 +317,8 @@ impl Editor {
                 self.document.file_name.clone().unwrap()
             ));
         } else {
-            self.status_message = StatusMessage::from("Error writing file".to_string());
+            self.status_message =
+                StatusMessage::from("Error writing file".to_string());
         }
     }
 
@@ -241,63 +339,10 @@ impl Editor {
         }
     }
 
-    fn move_cursor(&mut self, key: Key) {
-        let terminal_height = self.terminal.size().height as usize;
-        let Position { mut y, mut x } = self.cursor_position;
-        let height = self.document.len();
-        let mut flag = false;
-        let width = if let Some(row) = self.document.row(y) {
-            row.len()
-        } else {
-            0
-        };
-        match key {
-            Key::Up => {
-                cursor_cmds::move_cursor_up(&mut self.cursor_position);
-                flag = true;
-            }
-            Key::Down => {
-                cursor_cmds::move_cursor_down(&mut self.cursor_position, &self.document);
-                flag = true;
-            }
-            Key::Left => {
-                cursor_cmds::move_cursor_left(&mut self.cursor_position, &self.document, false);
-                flag = true;
-            }
-            Key::Right => {
-                cursor_cmds::move_cursor_right(
-                    &mut self.cursor_position,
-                    &self.document,
-                    false,
-                    false,
-                );
-                flag = true;
-            }
-            Key::Ctrl('u') => {
-                y = if y > terminal_height {
-                    y.saturating_sub(terminal_height)
-                } else {
-                    0
-                }
-            }
-            Key::Ctrl('d') => {
-                y = if y.saturating_add(terminal_height) < height {
-                    y.saturating_add(terminal_height)
-                } else {
-                    height
-                }
-            }
-            Key::Home => x = 0,
-            Key::End => x = width,
-            _ => (),
-        }
-
-        if !flag {
-            self.cursor_position = Position { x, y }
-        }
-    }
-
-    fn prompt(&mut self, prompt: &str) -> Result<Option<String>, std::io::Error> {
+    fn prompt(
+        &mut self,
+        prompt: &str,
+    ) -> Result<Option<String>, std::io::Error> {
         // Is there a way to not have to add a
         // self.mode = insert before every return?
         // maybe a wrapper for command line prompts?
@@ -306,10 +351,13 @@ impl Editor {
         self.mode = Mode::Command;
         let mut result = String::new();
         loop {
-            self.status_message = StatusMessage::from(format!("{prompt}{result}"));
+            self.status_message =
+                StatusMessage::from(format!("{prompt}{result}"));
             self.refresh_screen()?;
             match Terminal::read_key()? {
-                Key::Backspace => result.truncate(result.len().saturating_sub(1)),
+                Key::Backspace => {
+                    result.truncate(result.len().saturating_sub(1))
+                }
                 Key::Char('\n') => break,
                 Key::Ctrl('q') => {
                     result.truncate(0);

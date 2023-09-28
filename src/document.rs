@@ -98,6 +98,11 @@ impl Document {
         }
     }
 
+    pub fn delete_line(&mut self, at: &Position) {
+        self.rows.remove(at.y);
+
+    }
+
     #[must_use]
     pub fn row(&self, index: usize) -> Option<&Row> {
         self.rows.get(index)

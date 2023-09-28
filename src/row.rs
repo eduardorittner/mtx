@@ -41,7 +41,8 @@ impl Row {
         } else {
             let mut result = String::new();
             let mut length = 0;
-            for (index, grapheme) in self.string[..].graphemes(true).enumerate() {
+            for (index, grapheme) in self.string[..].graphemes(true).enumerate()
+            {
                 if index == at {
                     length += 1;
                     result.push(c);
@@ -58,8 +59,10 @@ impl Row {
         if at >= self.len() {
             return;
         }
-        let mut result: String = self.string[..].graphemes(true).take(at).collect();
-        let remainder: String = self.string[..].graphemes(true).skip(at + 1).collect();
+        let mut result: String =
+            self.string[..].graphemes(true).take(at).collect();
+        let remainder: String =
+            self.string[..].graphemes(true).skip(at + 1).collect();
         result.push_str(&remainder);
         self.string = result;
         self.update_len();
@@ -73,11 +76,20 @@ impl Row {
 
     #[must_use]
     pub fn split(&mut self, at: usize) -> Self {
-        let first_half: String = self.string[..].graphemes(true).take(at).collect();
-        let second_half: String = self.string[..].graphemes(true).skip(at).collect();
+        let first_half: String =
+            self.string[..].graphemes(true).take(at).collect();
+        let second_half: String =
+            self.string[..].graphemes(true).skip(at).collect();
         self.string = first_half;
         self.update_len();
         Self::from(&second_half[..])
+    }
+
+    pub fn slice(&self, start: usize, end: usize) -> &str {
+        if end == 0 {
+            return &self.string[start..];
+        }
+        &self.string[start..end]
     }
 
     #[must_use]

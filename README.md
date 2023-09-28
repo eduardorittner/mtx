@@ -29,7 +29,9 @@ to a piece table representation for very large files.
 
 - Abstracting all commands to a shared interface, for easier chaining and composition
 of commands, in the hopes of removing all the match statements and moving all that logic
-to a HashMap of strings (command names) and functions (commands).
+to a HashMap of strings (command names) and functions (commands) (or maybe not).
+- Implementing basic functions for moving around (on a word by word or line by line basis)
+and then building some edit commands on top of that (delete word, delete line).
 
 ## TODOS
 
