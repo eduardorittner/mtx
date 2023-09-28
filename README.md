@@ -56,6 +56,7 @@ for now as there is no "append" insert capability -- DONE
 - Add modes (normal, insert, maybe visual) -- DONE
 - Undo/Redo operation
 - Search 
+- Auto-indent when on a new line
 
 ### Visual
 

@@ -1,4 +1,5 @@
 use std::cmp;
+use termion::color;
 use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Default, Debug, PartialEq)]
@@ -22,7 +23,6 @@ impl Row {
     pub fn render(&self, start: usize, end: usize) -> String {
         let end = cmp::min(end, self.string.len());
         let start = cmp::min(start, end);
-        // let mut result = String::new();
         let result: String = self
             .string
             .graphemes(true)
