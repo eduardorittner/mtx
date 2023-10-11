@@ -32,6 +32,7 @@ of commands, in the hopes of removing all the match statements and moving all th
 to a HashMap of strings (command names) and functions (commands) (or maybe not).
 - Implementing basic functions for moving around (on a word by word or line by line basis)
 and then building some edit commands on top of that (delete word, delete line).
+- Thinking of implementing highlighting based on treesiter's API
 
 ## TODOS
 
