@@ -15,14 +15,44 @@ pub mod cursor_cmds {
         at.x = 0;
     }
 
+    pub fn move_cursor_up_n(at: &mut Position, number: usize) {
+        at.y = at.y.saturating_sub(number);
+    }
+
     pub fn move_cursor_up(at: &mut Position) {
         at.y = at.y.saturating_sub(1);
     }
 
+    pub fn move_cursor_down_n(
+        at: &mut Position,
+        doc: &Document,
+        number: usize,
+    ) {
+        let len = doc.len();
+        if at.y.saturating_add(number) < len {
+            at.y = at.y.saturating_add(number);
+        } else {
+            at.y = len.saturating_sub(1);
+        }
+    }
+
     pub fn move_cursor_down(at: &mut Position, doc: &Document) {
-        let len = doc.len().saturating_sub(1);
-        if at.y < len {
+        let len = doc.len();
+        if at.y.saturating_add(1) < len {
             at.y = at.y.saturating_add(1);
+        } else {
+            at.y = len.saturating_sub(1);
+        }
+    }
+
+    pub fn move_cursor_left_n(
+        at: &mut Position,
+        doc: &Document,
+        wrap: bool,
+        number: usize,
+    ) {
+        for _ in [..number] {
+            move_cursor_left(at, doc, wrap);
         }
     }
 
@@ -41,6 +71,18 @@ pub mod cursor_cmds {
                 }
             }
             None => (),
+        }
+    }
+
+    pub fn move_cursor_right_n(
+        at: &mut Position,
+        doc: &Document,
+        eol: bool,
+        wrap: bool,
+        number: usize,
+    ) {
+        for _ in [..number] {
+            move_cursor_right(at, doc, eol, wrap);
         }
     }
 
