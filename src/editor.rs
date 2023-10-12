@@ -479,12 +479,8 @@ impl Editor {
     }
 
     fn draw_cursor(&self) {
-        // This is basically here so we can store the cursor's absolute
-        // position, and display it according to the current line
-
         match self.mode {
-            // cursor in insert mode cant be at the end of line
-            Mode::Insert | Mode::Normal => {
+            Mode::Insert | Mode::Normal | Mode::Visual => {
                 let Position { x, y } = self.cursor_position;
                 let width = if let Some(row) = self.document.row(y) {
                     row.len()
@@ -509,7 +505,6 @@ impl Editor {
                 x: self.status_message.text.len(),
                 y: (self.terminal.size().height + 1) as usize,
             }),
-            Mode::Visual => (),
         }
     }
 
