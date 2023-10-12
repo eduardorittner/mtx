@@ -1,4 +1,4 @@
-use crate::commands::{cursor_cmds, edit_cmds};
+use crate::commands::{cursor_cmds, edit_cmds, visual_cmds};
 use crate::Document;
 use crate::Row;
 use crate::Terminal;
@@ -203,7 +203,11 @@ impl Editor {
 
                 // Changing modes
                 Key::Char('i') => self.mode = Mode::Insert,
-                Key::Char('v') => self.mode = Mode::Visual,
+                Key::Char('v') => visual_cmds::enter_visual_mode(
+                    &self.cursor_position,
+                    &mut self.hl_text,
+                    &mut self.mode,
+                ),
                 Key::Char('a') => {
                     cursor_cmds::move_cursor_right(
                         &mut self.cursor_position,
@@ -302,7 +306,76 @@ impl Editor {
                 ),
                 _ => (),
             },
-            Mode::Visual => {}
+            Mode::Visual => match pressed_key {
+                Key::Ctrl('q') => self.should_quit = true,
+                Key::Char('v') => self.mode = Mode::Normal,
+
+                Key::Ctrl('c') => self.mode = Mode::Normal,
+                Key::Char('h') | Key::Left | Key::Backspace => {
+                    cursor_cmds::move_cursor_left(
+                        &mut self.cursor_position,
+                        &self.document,
+                        false,
+                    );
+                    visual_cmds::update_selection(
+                        &self.cursor_position,
+                        &mut self.hl_text,
+                    );
+                }
+                Key::Char('j') | Key::Down => {
+                    cursor_cmds::move_cursor_down(
+                        &mut self.cursor_position,
+                        &self.document,
+                    );
+                    visual_cmds::update_selection(
+                        &self.cursor_position,
+                        &mut self.hl_text,
+                    )
+                }
+                Key::Char('k') | Key::Up => {
+                    cursor_cmds::move_cursor_up(&mut self.cursor_position);
+                    visual_cmds::update_selection(
+                        &self.cursor_position,
+                        &mut self.hl_text,
+                    )
+                }
+                Key::Char('l') | Key::Right => {
+                    cursor_cmds::move_cursor_right(
+                        &mut self.cursor_position,
+                        &self.document,
+                        true,
+                        false,
+                    );
+                    visual_cmds::update_selection(
+                        &self.cursor_position,
+                        &mut self.hl_text,
+                    )
+                }
+                Key::Ctrl('d') => {
+                    cursor_cmds::move_page_up(
+                        &mut self.cursor_position,
+                        &mut self.offset,
+                        self.terminal.size().height as usize,
+                    );
+                    visual_cmds::update_selection(
+                        &self.cursor_position,
+                        &mut self.hl_text,
+                    );
+                }
+                Key::Ctrl('u') => {
+                    cursor_cmds::move_page_down(
+                        &mut self.cursor_position,
+                        &mut self.offset,
+                        &self.document,
+                        self.terminal.size().height as usize,
+                    );
+                    visual_cmds::update_selection(
+                        &self.cursor_position,
+                        &mut self.hl_text,
+                    );
+                }
+                _ => (),
+            },
             Mode::Command => {}
         }
 
