@@ -98,9 +98,14 @@ impl Document {
         }
     }
 
+    pub fn insert_spaces(&mut self, at: &Position, number: usize) {
+        for _ in [..number] {
+            self.insert(&at, ' ');
+        }
+    }
+
     pub fn delete_line(&mut self, at: &Position) {
         self.rows.remove(at.y);
-
     }
 
     #[must_use]
