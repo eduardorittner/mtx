@@ -26,6 +26,12 @@ pub struct Position {
     pub y: usize,
 }
 
+#[derive(Default)]
+pub struct SelectedText {
+    pub start: Position,
+    pub end: Position,
+}
+
 struct StatusMessage {
     time: Instant,
     text: String,
@@ -46,6 +52,7 @@ pub struct Editor {
     cursor_position: Position,
     offset: Position,
     document: Document,
+    hl_text: SelectedText,
     status_message: StatusMessage,
     mode: Mode,
 }
@@ -86,6 +93,7 @@ impl Editor {
             document,
             cursor_position: Position::default(),
             offset: Position::default(),
+            hl_text: SelectedText::default(),
             status_message: StatusMessage::from(initial_status),
             mode: Mode::Normal,
         }
