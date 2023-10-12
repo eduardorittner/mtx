@@ -199,3 +199,23 @@ pub mod edit_cmds {
         delete(at, doc);
     }
 }
+
+pub mod visual_cmds {
+    use crate::Mode;
+    use crate::SelectedText;
+    use crate::Position;
+
+    pub fn enter_visual_mode(
+        at: &Position,
+        selected: &mut SelectedText,
+        mode: &mut Mode,
+    ) {
+        selected.start = at.clone();
+        selected.end = at.clone();
+        *mode = Mode::Visual;
+    }
+
+    pub fn update_selection(at: &Position, selected: &mut SelectedText) {
+        selected.end = at.clone();
+    }
+}

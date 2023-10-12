@@ -15,6 +15,8 @@ mod row;
 mod terminal;
 // mod tests;
 pub use document::Document;
+pub use editor::SelectedText;
+pub use editor::Mode;
 use editor::Editor;
 pub use editor::Position;
 pub use row::Row;
