@@ -9,11 +9,12 @@ use termion::color;
 use termion::event::Key;
 
 const STATUS_BG_COLOR: color::Rgb = color::Rgb(75, 75, 75);
+const HIGHLIGHT_BG_COLOR: color::Rgb = color::Rgb(75, 75, 75);
 const STATUS_FG_COLOR: color::Rgb = color::Rgb(200, 200, 200);
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[repr(u8)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Mode {
     Normal = 0,
     Insert,
@@ -574,32 +575,127 @@ impl Editor {
         println!("{welcome_message}\r");
     }
 
-    pub fn draw_row(&self, row: &Row) {
-        let width = self.terminal.size().width as usize;
-        let start = self.offset.x;
-        // Decrement size of coument in digits
-        let end = self.offset.x.saturating_add(width);
-        // Not taking into account side bar size
-        let row = row.render(start, end);
-        println!("{row}\r");
-    }
-
     fn draw_rows(&self) {
         // Separate this function into draw_starting_screen
         // and draw_rows
         let height = self.terminal.size().height;
         for terminal_row in 0..height {
             Terminal::clear_current_line();
-            if let Some(row) = self
-                .document
-                .row(self.offset.y.saturating_add(terminal_row as usize))
-            {
-                self.draw_row(row);
+            let row_number =
+                self.offset.y.saturating_add(terminal_row as usize);
+
+            let (hl_text_start, hl_text_end) =
+                if self.hl_text.start <= self.hl_text.end {
+                    (&self.hl_text.start, &self.hl_text.end)
+                } else {
+                    (&self.hl_text.end, &self.hl_text.start)
+                };
+
+            if let Some(row) = self.document.row(row_number) {
+                if hl_text_start.y <= row_number
+                    && row_number <= hl_text_end.y
+                    && self.mode == Mode::Visual
+                {
+                    self.draw_highlighted_row(&row, row_number);
+                } else {
+                    self.draw_row(row);
+                }
             } else if self.document.is_empty() && terminal_row == height / 3 {
                 self.draw_welcome_message();
             } else {
                 println!("~\r");
             }
+        }
+    }
+
+    pub fn draw_row(&self, row: &Row) {
+        let width = self.terminal.size().width as usize;
+        let start = self.offset.x;
+        // Decrement size of coument in digits
+        let end = self.offset.x.saturating_add(width);
+        let row = row.render(start, end);
+
+        println!("{row}\r");
+    }
+
+    pub fn draw_highlighted_row(&self, row: &Row, row_number: usize) {
+        // This is a kind of complicated function, with lots of little things
+        // string slicing ends (e.g. &str[x..y]) ends on y - 1, and I want the
+        // highlighted text struct to be end-to-end inclusive, so everytime
+        // an "end" variable is used, add 1 to it.
+        // TODO this currently does not work when highlighting until a line break,
+        // which only happens when the '\n' is the last character highlighted,
+        // a simple bound check *should* fix it.
+
+        // Other than that, there are 4 possible permutations:
+        // 1 - Empty row:
+        // print " \r" just so it appears highlighted
+        // 2 - Highlighted text starts and end in the current row:
+        // Print text before highlight, highlighted text, and text after
+        // 3 - Highlighted text starts in current row but ends below it:
+        // Print text before highlight, and the rest of the row is highlighted
+        // 4 - Highlighted text start before current row and ends in it:
+        // Print highlighted text until end, print text after
+        // 5 - Highlighted text starts before current row and after it
+        // Print whole row highlighted
+
+        let width = self.terminal.size().width as usize;
+        let start = self.offset.x;
+        // Decrement size of coument in digits
+        let end = self.offset.x.saturating_add(width);
+        let row = row.render(start, end);
+
+        // 1
+        if row.is_empty() {
+            Terminal::set_bg_color(HIGHLIGHT_BG_COLOR);
+            println!(" \r");
+            Terminal::reset_bg_color();
+            return;
+        }
+
+        let (text_start, text_end) = if &self.hl_text.start <= &self.hl_text.end
+        {
+            (&self.hl_text.start, &self.hl_text.end)
+        } else {
+            (&self.hl_text.end, &self.hl_text.start)
+        };
+
+        // 2
+        if text_end.y == text_start.y {
+            let row_start = &row[..text_start.x];
+            let hl_text = &row[text_start.x..text_end.x + 1];
+            let row_end = &row[text_end.x + 1..];
+
+            print!("{row_start}");
+            Terminal::set_bg_color(HIGHLIGHT_BG_COLOR);
+            print!("{hl_text}");
+            Terminal::reset_bg_color();
+            println!("{row_end}\r");
+
+            // 3
+        } else if text_start.y == row_number {
+            let row_start = &row[..text_start.x];
+            let hl_text = &row[text_start.x..];
+
+            print!("{row_start}");
+            Terminal::set_bg_color(HIGHLIGHT_BG_COLOR);
+            print!("{hl_text}");
+            Terminal::reset_bg_color();
+            println!("\r");
+
+            // 4
+        } else if text_end.y == row_number {
+            let hl_text = &row[..text_end.x + 1];
+            let row_end = &row[text_end.x + 1..];
+
+            Terminal::set_bg_color(HIGHLIGHT_BG_COLOR);
+            print!("{hl_text}");
+            Terminal::reset_bg_color();
+            println!("{row_end}\r");
+        } else {
+            Terminal::set_bg_color(HIGHLIGHT_BG_COLOR);
+            println!("{row}\r");
+            Terminal::reset_bg_color();
         }
     }
 }
