@@ -19,20 +19,25 @@ and "<Space>w", respectively.
 - Learn rust
 - Implement a simple text editor base
 - Implement the ability to change the internal text data structure representation
-during runtime (or at least as a command argument). This would be a useful exercise
-in understanding the different ways to implement text editing functionality and
-also a nice way to check for their practical differences in speed, situations, etc.
-That way, you could use a gap buffer for everything but have the ability to change
-to a piece table representation for very large files.
+during runtime (or at least as a command argument), such as a vector of lines, rope
+or gap buffer, for example. This would be a useful exercise in understanding the
+different ways to implement text editing functionality and also a nice way to
+check for their practical differences in speed, situations, etc. That way, you
+could use a gap buffer for everything but have the ability to change to a piece
+table representation for very large files.
 
 ## What I'm currently doing
 
-- Abstracting all commands to a shared interface, for easier chaining and composition
-of commands, in the hopes of removing all the match statements and moving all that logic
-to a HashMap of strings (command names) and functions (commands) (or maybe not).
 - Implementing basic functions for moving around (on a word by word or line by line basis)
 and then building some edit commands on top of that (delete word, delete line).
-- Thinking of implementing highlighting based on treesiter's API
+- Implementing a visual mode
+
+## Plans
+
+- Implement highlighting with treesitter
+- Implement file navigating capabilities for switching files during runtime,
+searching through directories, etc.
+- Implement gap buffer structure
 
 ## TODOS
 
@@ -50,11 +55,14 @@ than it (should be fixed with draw-cursor func) -- DONE
 for now as there is no "append" insert capability -- DONE
 - Cursor is not shown on status message prompt -- DONE
 - Backspace acting as DELETE when at the start of a line -- DONE
+- Fix visual mode selection when cursor is directly on top of a '\n'
 
 ### Text editing
 
 - Add editing text capabilities (insert, remove, select) -- DONE
 - Add modes (normal, insert, maybe visual) -- DONE
+- Highlighting text -- DONE
+- Edit highlighted text
 - Undo/Redo operation
 - Search 
 - Auto-indent when on a new line
