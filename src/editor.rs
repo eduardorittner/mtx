@@ -2,6 +2,7 @@ use crate::commands::{cursor_cmds, edit_cmds};
 use crate::Document;
 use crate::Row;
 use crate::Terminal;
+use std::cmp::Ordering;
 use std::env;
 use std::time::Instant;
 use termion::color;
@@ -20,10 +21,25 @@ pub enum Mode {
     Command, // For command line prompts
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Eq, Clone)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
+}
+
+impl PartialOrd for Position {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match self.y.cmp(&other.y) {
+            Ordering::Equal => return Some(self.x.cmp(&other.x)),
+            ord => return Some(ord),
+        }
+    }
+}
+
+impl Ord for Position {
+    fn cmp(&self, other: &Self) -> Ordering {
+        return self.partial_cmp(other).unwrap();
+    }
 }
 
 #[derive(Default)]
