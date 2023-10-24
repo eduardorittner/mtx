@@ -601,14 +601,20 @@ impl Editor {
     fn draw_message_bar(&self) {
         // Maybe we could only call this function if 5 seconds had passed
         // or the message was updated?
+        let width = self.terminal.size().width as usize;
+
         Terminal::clear_current_line();
-        let message = &self.status_message;
-        if message.time.elapsed().as_secs() < 5 {
-            let mut text = message.text.clone();
-            text.truncate(self.terminal.size().width as usize);
-            print!("{text}");
-        }
+
+        let mut text = match self.mode {
+            Mode::Visual => "-- VISUAL --".to_string(),
+            Mode::Insert => "-- INSERT --".to_string(),
+            _ => self.status_message.text.clone(),
+        };
+
+        text.truncate(width);
+        print!("{text}");
     }
+
     fn draw_welcome_message(&self) {
         let mut welcome_message = format!("mtx editor -- version {VERSION}");
         let width = self.terminal.size().width as usize;
