@@ -68,6 +68,23 @@ impl Row {
         self.update_len();
     }
 
+    pub fn delete_slice(&mut self, start: usize, end: usize) {
+        let mut first_slice: String =
+            self.string[..].graphemes(true).take(start).collect();
+        let second_slice: String = self.string[..]
+            .graphemes(true)
+            .skip(end.saturating_add(1))
+            .collect();
+        first_slice.push_str(second_slice.as_str());
+        self.string = first_slice;
+        self.update_len();
+    }
+
+    pub fn delete_until_eol(&mut self, start: usize) {
+        self.string = self.string[..].graphemes(true).take(start).collect();
+        self.update_len();
+    }
+
     pub fn append(&mut self, row: &Row) {
         // Maybe we should take a string only, not a row
         self.string = format!("{}{}", self.string, row.string);
