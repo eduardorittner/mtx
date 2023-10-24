@@ -1,6 +1,54 @@
 pub mod cursor_cmds {
     use crate::Document;
+    use crate::Mode;
     use crate::Position;
+
+    pub fn update_cursor(at: &mut Position, doc: &Document, mode: &Mode) {
+        // This function must be called everytime an operation that
+        // could leave the cursor in an invalid position is called
+        // (maybe the functions should call this directly?)
+        //
+        // NOTE: there could be a way to guarantee that a cursor is
+        // never left in an invalid position after a command, but doing
+        // it this way just streamlines the process
+
+        let doc_len = doc.len();
+        let line_len: usize = match doc.row(at.y) {
+            Some(line) => line.len(),
+            // If Some(at.y) is None, then we won't reach
+            // any of the else if statements so it can be
+            // any value
+            None => 0,
+        };
+
+        match mode {
+            Mode::Normal => {
+                if at.y >= doc_len {
+                    at.y = doc_len.saturating_sub(1);
+                    at.x = doc.row(at.y).unwrap().len();
+                } else if at.x >= line_len {
+                    at.x = line_len.saturating_sub(1);
+                }
+            }
+            Mode::Visual => {
+                if at.y >= doc_len {
+                    at.y = doc_len.saturating_sub(1);
+                    at.x = doc.row(at.y).unwrap().len();
+                } else if at.x >= line_len {
+                    at.x = line_len;
+                }
+            }
+            Mode::Insert => {
+                if at.y >= doc_len {
+                    at.y = doc_len.saturating_sub(1);
+                    at.x = doc.row(at.y).unwrap().len().saturating_sub(1);
+                } else if at.x >= line_len {
+                    at.x = line_len;
+                }
+            }
+            Mode::Command => (),
+        }
+    }
 
     pub fn move_cursor_eol(at: &mut Position, doc: &Document, eol: bool) {
         let len = doc.row(at.y).unwrap().len();
