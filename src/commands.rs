@@ -204,7 +204,7 @@ pub mod edit_cmds {
         let len = doc.len();
         if len != 0 {
             doc.delete_line(at.y);
-            if at.y == doc.len() {
+            if at.y == len {
                 at.y = at.y.saturating_sub(1);
             }
         }
@@ -238,15 +238,17 @@ pub mod edit_cmds {
     }
 
     pub fn insert_newline_below(at: &mut Position, doc: &mut Document) {
-        match doc.row(at.y) {
-            Some(row) => {
+        if let Some(row) =  doc.row(at.y) {
                 doc.insert_newline(&Position {
                     x: row.len(),
                     y: at.y,
                 });
-            }
-            None => doc.insert_newline(&Position { x: 0, y: 0 }),
         }
+            else {
+
+                doc.insert_newline(&Position { x: 0, y: 0 });
+            }
+        
     }
 
     pub fn insert_newline_above(at: &mut Position, doc: &mut Document) {
