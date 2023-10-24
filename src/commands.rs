@@ -268,21 +268,32 @@ pub mod edit_cmds {
 }
 
 pub mod visual_cmds {
+    use crate::Document;
     use crate::Mode;
-    use crate::SelectedText;
     use crate::Position;
+    use crate::SelectedText;
 
     pub fn enter_visual_mode(
         at: &Position,
         selected: &mut SelectedText,
         mode: &mut Mode,
     ) {
+        // TODO: add bound checking for current position
         selected.start = at.clone();
         selected.end = at.clone();
         *mode = Mode::Visual;
     }
 
-    pub fn update_selection(at: &Position, selected: &mut SelectedText) {
-        selected.end = at.clone();
+    pub fn update_selection(
+        at: &Position,
+        selected: &mut SelectedText,
+        doc: &Document,
+    ) {
+        let len = doc.row(at.y).unwrap().len().saturating_sub(1);
+        if at.x >= len {
+            selected.end = Position { x: len, y: at.y };
+        } else {
+            selected.end = at.clone();
+        }
     }
 }
