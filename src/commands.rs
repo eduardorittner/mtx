@@ -159,9 +159,9 @@ pub mod cursor_cmds {
         }
     }
 
-    pub fn move_next_word(at: &mut Position, doc: &Document) {}
+    pub fn move_next_word(_at: &mut Position, _doc: &Document) {}
 
-    pub fn move_last_word(at: &mut Position, doc: &Document) {}
+    pub fn move_last_word(_at: &mut Position, _doc: &Document) {}
 
     pub fn move_page_up(
         at: &mut Position,
