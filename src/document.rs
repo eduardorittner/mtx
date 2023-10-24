@@ -196,9 +196,7 @@ impl Document {
     }
 
     pub fn is_out_of_bounds(&self, at: &Position) -> bool {
-        // TODO: returns true when at is not a valid position
-        // in the text
-        return true;
+        return at.y >= self.len() || at.x >= self.row_len(at.y).unwrap();
     }
 
     #[must_use]
