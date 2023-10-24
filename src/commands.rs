@@ -105,20 +105,20 @@ pub mod cursor_cmds {
     }
 
     pub fn move_cursor_left(at: &mut Position, doc: &Document, wrap: bool) {
-        match doc.row(at.y) {
-            Some(row) => {
-                let width = row.len();
-                if at.x == 0 && at.y > 0 && wrap {
-                    at.y = at.y.saturating_sub(1);
-                    at.x = doc.row(at.y).unwrap().len();
-                } else if at.x > width && width > 0 {
-                    // When the actual cursor is further to the right than the line
-                    at.x = width.saturating_sub(1);
-                } else {
-                    at.x = at.x.saturating_sub(1);
-                }
+        // NOTE: if wrap option is set, then it wraps until the '\n'
+        // character, not before it
+
+        if let Some(row) = doc.row(at.y) {
+            let width = row.len();
+            if at.x == 0 && at.y > 0 && wrap {
+                at.y = at.y.saturating_sub(1);
+                at.x = doc.row(at.y).unwrap().len();
+            } else if at.x > width && width > 0 {
+                // When the actual cursor is further to the right than the line
+                at.x = width.saturating_sub(1);
+            } else {
+                at.x = at.x.saturating_sub(1);
             }
-            None => (),
         }
     }
 
