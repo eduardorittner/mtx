@@ -113,6 +113,17 @@ impl Document {
         self.rows.get(index)
     }
 
+    pub fn row_as_mut(&mut self, index: usize) -> Option<&mut Row> {
+        self.rows.get_mut(index)
+    }
+
+    pub fn row_len(&self, index: usize) -> Option<usize> {
+        match self.rows.get(index) {
+            Some(x) => Some(x.len()),
+            None => None,
+        }
+    }
+
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.rows.is_empty()
