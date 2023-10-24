@@ -22,7 +22,7 @@ pub enum Mode {
     Command, // For command line prompts
 }
 
-#[derive(Default, PartialEq, Eq, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
@@ -210,6 +210,7 @@ impl Editor {
                         &mut self.cursor_position,
                         &self.document,
                     );
+                    self.mode = Mode::Insert;
                 }
                 Key::Char('O') => {
                     edit_cmds::insert_newline_above(
@@ -217,15 +218,20 @@ impl Editor {
                         &mut self.document,
                     );
                     cursor_cmds::move_cursor_up(&mut self.cursor_position);
+                    self.mode = Mode::Insert;
                 }
 
                 // Changing modes
                 Key::Char('i') => self.mode = Mode::Insert,
-                Key::Char('v') => visual_cmds::enter_visual_mode(
-                    &self.cursor_position,
-                    &mut self.hl_text,
-                    &mut self.mode,
-                ),
+                Key::Char('v') => {
+                    visual_cmds::enter_visual_mode(
+                        &self.cursor_position,
+                        &mut self.hl_text,
+                        &mut self.mode,
+                    );
+                    self.status_message =
+                        StatusMessage::from("-- Visual Mode --".to_string());
+                }
                 Key::Char('a') => {
                     cursor_cmds::move_cursor_right(
                         &mut self.cursor_position,
