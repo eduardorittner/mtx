@@ -116,6 +116,53 @@ impl Document {
         }
     }
 
+    pub fn delete_slice(&mut self, start: &Position, end: &Position) {
+        // TODO: clean this shit
+        // Deletes a (continuous) slice of text that may span multiple
+        // lines or not
+        // NOTE: start must be smaller than end
+
+        if start.x == 0
+            && end.x == self.row(end.y).unwrap().len().saturating_sub(1)
+        {
+            self.delete_lines(start.y, end.y);
+            return;
+        }
+
+        match start.y.cmp(&end.y) {
+            Ordering::Greater => (),
+            Ordering::Equal => {
+                self.row_as_mut(start.y)
+                    .unwrap()
+                    .delete_slice(start.x, end.x);
+            }
+            Ordering::Less => {
+                self.delete_until_eol(start);
+                let mut y = start.y.saturating_add(1);
+                let next_line = start.y.saturating_add(1);
+                while y < end.y {
+                    self.delete_line(next_line);
+                    y = y.saturating_add(1);
+                }
+                let last_row = self.row(next_line).unwrap();
+                let last_row = if !last_row.is_empty() {
+                    Row::from(last_row.slice(end.x.saturating_add(1), 0))
+                } else {
+                    if let Some(last_row) =
+                        self.row(next_line.saturating_add(1))
+                    {
+                        // If line after cursor is not empty
+                        Row::from(last_row.slice(0, 0))
+                    } else {
+                        return;
+                    }
+                };
+                self.row_as_mut(start.y).unwrap().append(&last_row);
+                self.delete_line(next_line);
+            }
+        }
+    }
+
     pub fn delete_until_eol(&mut self, at: &Position) {
         if let Some(row) = self.row_as_mut(at.y) {
             row.delete_until_eol(at.x);
