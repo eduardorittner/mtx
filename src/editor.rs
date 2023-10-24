@@ -175,7 +175,10 @@ impl Editor {
 
                 // Edit commands
                 Key::Char('x') => {
-                    edit_cmds::delete(&self.cursor_position, &mut self.document)
+                    edit_cmds::delete(
+                        &self.cursor_position,
+                        &mut self.document,
+                    );
                 }
                 Key::Char('d') => match Terminal::read_key()? {
                     Key::Char('d') => edit_cmds::delete_line(
@@ -229,8 +232,6 @@ impl Editor {
                         &mut self.hl_text,
                         &mut self.mode,
                     );
-                    self.status_message =
-                        StatusMessage::from("-- Visual Mode --".to_string());
                 }
                 Key::Char('a') => {
                     cursor_cmds::move_cursor_right(
@@ -342,8 +343,11 @@ impl Editor {
                     );
                     self.cursor_position = self.hl_text.start.clone();
                     self.mode = Mode::Normal;
-                    self.status_message = StatusMessage::from("".to_string());
-                    cursor_cmds::update_cursor(&mut self.cursor_position, &self.document, &self.mode);
+                    cursor_cmds::update_cursor(
+                        &mut self.cursor_position,
+                        &self.document,
+                        &self.mode,
+                    );
                 }
 
                 Key::Ctrl('c') => self.mode = Mode::Normal,
