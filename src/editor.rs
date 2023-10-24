@@ -321,6 +321,7 @@ impl Editor {
                     visual_cmds::update_selection(
                         &self.cursor_position,
                         &mut self.hl_text,
+                        &self.document,
                     );
                 }
                 Key::Char('j') | Key::Down => {
@@ -331,6 +332,7 @@ impl Editor {
                     visual_cmds::update_selection(
                         &self.cursor_position,
                         &mut self.hl_text,
+                        &self.document,
                     )
                 }
                 Key::Char('k') | Key::Up => {
@@ -338,6 +340,7 @@ impl Editor {
                     visual_cmds::update_selection(
                         &self.cursor_position,
                         &mut self.hl_text,
+                        &self.document,
                     )
                 }
                 Key::Char('l') | Key::Right => {
@@ -350,6 +353,7 @@ impl Editor {
                     visual_cmds::update_selection(
                         &self.cursor_position,
                         &mut self.hl_text,
+                        &self.document,
                     )
                 }
                 Key::Ctrl('d') => {
@@ -361,6 +365,7 @@ impl Editor {
                     visual_cmds::update_selection(
                         &self.cursor_position,
                         &mut self.hl_text,
+                        &self.document,
                     );
                 }
                 Key::Ctrl('u') => {
@@ -373,6 +378,7 @@ impl Editor {
                     visual_cmds::update_selection(
                         &self.cursor_position,
                         &mut self.hl_text,
+                        &self.document,
                     );
                 }
                 _ => (),
