@@ -1,3 +1,15 @@
+// Data structure for a row (line) of text
+// Should only support basic features such as:
+// deleting/inserting/replacing one character
+// deleting a slice of text
+// delete until end of row
+// appending text to the end of the row
+// return text to be rendered in unicode
+//
+// NOTE: No row should ever contain '\n', instead
+// it should be added directly when printing, such as
+// println!("{row}")
+
 use std::cmp;
 use termion::color;
 use unicode_segmentation::UnicodeSegmentation;
