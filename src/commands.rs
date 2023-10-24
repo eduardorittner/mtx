@@ -210,6 +210,25 @@ pub mod edit_cmds {
         }
     }
 
+    pub fn delete_selection(at: &Position, end: &Position, doc: &mut Document) {
+        doc.delete_slice(at, end);
+    }
+
+    pub fn delete_until_eol(at: &Position, doc: &mut Document) {
+        // Deletes all the characters below the cursor and to
+        // the right except for '\n'
+
+        doc.delete_until_eol(&at);
+    }
+
+    pub fn delete_to_eol(at: &Position, doc: &mut Document) {
+        // Similar to delete_until_eol(), however this function deletes
+        // the newline character and appends the next line to the current
+        // one
+
+        doc.delete_to_eol(at);
+    }
+
     pub fn insert(at: &Position, doc: &mut Document, c: char) {
         doc.insert(at, c);
     }
