@@ -5,9 +5,9 @@ and heavily inspired by NeoVim.
 
 ## Using MTX
 
-Mtx is based on neovim's (and therefore vim) style of text editing, which
+Mtx is heavily based on neovim's (and therefore vim) style of text editing, which
 are heavily reliant on "modes". The application starts in normal mode, where
-you can move around using "h", "j", "k", and "l" to move around (or the arrow
+you can move around using "h", "j", "k", and "l" (or the arrow
 keys). To enter insert mode press "i", to insert before the cursor, or "a" to
 insert after it. To go back to normal mode press "Ctrl-c" or "Esc".
 To save a file in insert mode, press "Ctrl-s" to save to the file's current
@@ -30,7 +30,7 @@ table representation for very large files.
 
 - Implementing basic functions for moving around (on a word by word or line by line basis)
 and then building some edit commands on top of that (delete word, delete line).
-- Implementing a visual mode
+- Implementing a visual mode (and text highlighting)
 
 ## Plans
 
@@ -55,7 +55,7 @@ than it (should be fixed with draw-cursor func) -- DONE
 for now as there is no "append" insert capability -- DONE
 - Cursor is not shown on status message prompt -- DONE
 - Backspace acting as DELETE when at the start of a line -- DONE
-- Fix visual mode selection when cursor is directly on top of a '\n'
+- Fix visual mode selection when cursor is directly on top of a '\n' -- DONE
 
 ### Text editing
 
