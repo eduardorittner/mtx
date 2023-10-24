@@ -155,7 +155,7 @@ pub mod edit_cmds {
     pub fn delete_line(at: &mut Position, doc: &mut Document) {
         let len = doc.len();
         if len != 0 {
-            doc.delete_line(at);
+            doc.delete_line(at.y);
             if at.y == doc.len() {
                 at.y = at.y.saturating_sub(1);
             }

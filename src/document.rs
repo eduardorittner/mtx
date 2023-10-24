@@ -104,8 +104,18 @@ impl Document {
         }
     }
 
-    pub fn delete_line(&mut self, at: &Position) {
-        self.rows.remove(at.y);
+    pub fn delete_line(&mut self, at: usize) {
+        self.rows.remove(at);
+    }
+
+    pub fn delete_lines(&mut self, start: usize, end: usize) {
+        // Go in reverse since after deleting a line all further
+        // indexes are now -1, so we don't have to deal with that.
+        for i in (start..end.saturating_add(1)).rev() {
+            self.rows.remove(i);
+        }
+    }
+
     }
 
     #[must_use]
