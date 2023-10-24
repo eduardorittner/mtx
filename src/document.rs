@@ -116,6 +116,20 @@ impl Document {
         }
     }
 
+    pub fn delete_until_eol(&mut self, at: &Position) {
+        if let Some(row) = self.row_as_mut(at.y) {
+            row.delete_until_eol(at.x);
+        }
+    }
+
+    pub fn delete_to_eol(&mut self, start: &Position) {
+        // Deletes from current position until end of line character,
+        // appending the line below to this one
+
+        let next_row = self.rows.remove(start.y.saturating_add(1));
+        let row = self.row_as_mut(start.y).unwrap();
+        row.delete_until_eol(start.x);
+        row.append(&next_row);
     }
 
     #[must_use]
