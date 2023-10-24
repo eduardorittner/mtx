@@ -195,6 +195,12 @@ impl Document {
         }
     }
 
+    pub fn is_out_of_bounds(&self, at: &Position) -> bool {
+        // TODO: returns true when at is not a valid position
+        // in the text
+        return true;
+    }
+
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.rows.is_empty()
