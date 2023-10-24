@@ -12,3 +12,4 @@ create_diffs.js
 diffs/
 create_commit.js
 rebase_tags.js
+.txt
