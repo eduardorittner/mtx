@@ -184,6 +184,23 @@ impl Editor {
                     ),
                     _ => (),
                 },
+                Key::Char('D') => {
+                    edit_cmds::delete_until_eol(
+                        &mut self.cursor_position,
+                        &mut self.document,
+                    );
+                    cursor_cmds::move_cursor_left(
+                        &mut self.cursor_position,
+                        &self.document,
+                        false,
+                    )
+                }
+                Key::Char('J') => {
+                    edit_cmds::delete_to_eol(
+                        &self.cursor_position,
+                        &mut self.document,
+                    );
+                }
                 Key::Char('o') => {
                     edit_cmds::insert_newline_below(
                         &mut self.cursor_position,
@@ -310,6 +327,18 @@ impl Editor {
             Mode::Visual => match pressed_key {
                 Key::Ctrl('q') => self.should_quit = true,
                 Key::Char('v') => self.mode = Mode::Normal,
+
+                Key::Char('x') => {
+                    edit_cmds::delete_selection(
+                        &self.hl_text.start,
+                        &self.hl_text.end,
+                        &mut self.document,
+                    );
+                    self.cursor_position = self.hl_text.start.clone();
+                    self.mode = Mode::Normal;
+                    self.status_message = StatusMessage::from("".to_string());
+                    cursor_cmds::update_cursor(&mut self.cursor_position, &self.document, &self.mode);
+                }
 
                 Key::Ctrl('c') => self.mode = Mode::Normal,
                 Key::Char('h') | Key::Left | Key::Backspace => {
